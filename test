@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-from admin_api.crypt import genkeypair
+from admin_api.crypt import Keypair
 
 
-genkeypair()
+mykeypair = Keypair()
+data = mykeypair.encrypt('Hello There')
+print 'The decrypted string is %s' % (mykeypair.decrypt(data))
+
