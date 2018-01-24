@@ -2,9 +2,18 @@
 
 from admin_api import fetch_remote, fetch_json, build_rrset
 from pprint import pprint
+from admin_api.crypt import Keypair
+import base64
+
+mykeypair = Keypair()
+mypubkey = mykeypair.get_pub_key()
+b64 = base64.b64encode(mypubkey)
+print b64
 
 headers = {}
 headers['X-API-Key'] = 'ASDFASDF'
+headers['X-API-User'] = 'dbartley'
+headers['X-API-Pubkey'] = b64
 
 data = []
 
@@ -12,7 +21,7 @@ data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
 #pprint(data)
 #netdata = {"rrsets": data}
 
-url = 'http://localhost:9393/apitest'
+url = 'http://localhost:9393/api'
 jdata = fetch_json(url, headers=headers, data=data, method='POST')
 
 print jdata
