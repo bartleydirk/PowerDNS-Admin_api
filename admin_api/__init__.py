@@ -4,6 +4,9 @@ import json
 import requests
 import urlparse
 import hashlib
+from ConfigParser import RawConfigParser
+
+
 
 #from app import app
 #from distutils.version import StrictVersion
@@ -21,6 +24,7 @@ def auth_from_url(url):
         auth = requests.auth.HTTPBasicAuth(auth[0], auth[1])
     return auth
 
+
 def build_rrset(name=None, ipaddr=None, type_='A', ttl=86400, disabled=False):
     rrset = {"name": "%s" % (name),
              "type": "%s" % (type_),
@@ -30,7 +34,6 @@ def build_rrset(name=None, ipaddr=None, type_='A', ttl=86400, disabled=False):
                  "content": "%s" % (ipaddr),
                  "disabled": disabled, }]}
     return rrset
-
 
 
 def fetch_remote(remote_url, method='GET', data=None, accept=None, params=None, timeout=None, headers=None):
@@ -103,3 +106,22 @@ def display_record_name(data):
     else:
         return record_name.replace('.'+domain_name, '')
 
+
+class ApiParser(RawConfigParser):
+    """
+    A class to inherit from RawConfigParser and have safe methods to get values
+    So that the config file can not have the value and there will be a default
+    """
+    def safe_get(self, section, option, default=None):
+        """ Safe Get Method """
+        if self.has_option(section, option):
+            return self.get(section, option)
+        else:
+            return default
+
+    def safe_getboolean(self, section, option, default=False):
+        """ Safe Get a boolean value Method """
+        if self.has_option(section, option):
+            return self.getboolean(section, option)
+        else:
+            return default
