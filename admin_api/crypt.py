@@ -13,6 +13,15 @@ from Crypto import Random
 
 # pylint: disable=E0001
 
+def limitlines(inval):
+    if not inval:
+        return
+    retval = ''
+    lst = inval.split('\n')
+    for index, value in enumerate(lst):
+        if index < 2:
+            retval += '%s\n' % value
+    return retval
 
 class Keypair(object):
     """Lets use public and private keys."""
@@ -42,7 +51,7 @@ class Keypair(object):
         self.config.read(self.cnfgfile)
 
         if pubkeystring:
-            self.log("Setting pubkeystring %s" % (pubkeystring))
+            self.log("Setting pubkeystring :\n%s" % (limitlines(pubkeystring)))
             self.public_key_string = pubkeystring
         else:
             # get the public key string from the config file
@@ -62,21 +71,23 @@ class Keypair(object):
             else:
                 self.__genkeypair()
 
-        self.log('Checking truthyness  of public_key_string %s' % self.public_key_string)
+        self.log('Checking truthyness of public_key_string %s' % limitlines(self.public_key_string))
         if self.public_key_string:
             self.exists = True
 
     def __repr__(self):
-        retval = 'keypairname is "%s"\n' % (self.keypairname)
-        retval += 'public_key_string is "%s"\n' % (self.public_key_string)
-        retval += 'priv_key_sting is "%s"\n' % (self.priv_key_sting)
+        #re.compile("")
+        retval = 'Keypair __repr__ :\n'
+        retval += 'keypairname is "%s"\n' % (self.keypairname)
+        retval += 'public_key_string is "%s"\n' % (limitlines(self.public_key_string))
+        retval += 'priv_key_sting is "%s"\n' % (limitlines(self.priv_key_sting))
         return retval
 
     def __importkeys(self):
         """Import keys from config file."""
         if self.priv_key_sting:
             self.priv_key_object = RSA.importKey(self.priv_key_sting)
-        self.log('__importkeys importing public key %s' % (self.public_key_string))
+        self.log('__importkeys importing public key :\n%s' % (limitlines(self.public_key_string)))
         self.public_key_object = RSA.importKey(self.public_key_string)
 
     def __genkeypair(self):
@@ -112,18 +123,23 @@ class Keypair(object):
 
     def encrypt(self, string_in):
         """Encrypt a string."""
-        enc_data = self.public_key_object.encrypt(string_in, 32)
+        enc_data = self.public_key_object.encrypt(string_in, 32)[0]
+        enc_data = base64.b64encode(enc_data)
 
-        if self.debuggenkey:
+        if True:
             self.log("Encrypted data :")
             self.log(enc_data)
-            self.log("")
         return enc_data
 
     def decrypt(self, enc_data):
         """Decrypt a sting."""
         if self.priv_key_sting:
-            return self.priv_key_object.decrypt(enc_data)
+            self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
+            enc_data = (base64.b64decode(enc_data))
+            self.log("decrypt b64 decoded string is %s, should look like fucked up shit?" % enc_data)
+            net_decrypted = self.priv_key_object.decrypt(enc_data)
+            self.log("decrypt string is %s" % net_decrypted)
+            return 
         return None
 
     def get_pub_key(self):
@@ -139,7 +155,8 @@ class Keypair(object):
             self.config.set(self.keypairname, 'token', token)
 
         if pubkey:
-            self.config.set(self.keypairname, 'public', base64.b64decode(pubkey))
+            #self.log('pubkey passed to saveserveronclient %s' % pubkey)
+            self.config.set(self.keypairname, 'public', pubkey)
 
         if token or pubkey:
             # write the new token to config file
@@ -184,7 +201,7 @@ class Keypair(object):
     def log(self, message):
         """Logg, control output here"""
         if self.showlog:
-            show = "keyname %s - %s" % (self.keypairname, message)
+            show = "Keypair keyname %s -> %s" % (self.keypairname, message)
             print(show)
 
 

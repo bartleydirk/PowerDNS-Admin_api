@@ -6,7 +6,8 @@ from admin_api.crypt import Keypair
 import base64
 import sys
 #import json
-
+import re
+from getpass import getpass
 
 class Clientapi(object):
     """Api Client Class."""
@@ -14,14 +15,15 @@ class Clientapi(object):
     def __init__(self):
         self.baseurl = 'http://localhost:9393'
         self.username = 'dbartley'
+        self.showlog = True
 
-        self.mykeypair = Keypair(username='mykeys')
-        self.pubkey_b64 = base64.b64encode(self.mykeypair.get_pub_key())
+        self.clientkeypair = Keypair(username='mykeys')
+        self.pubkey_b64 = base64.b64encode(self.clientkeypair.get_pub_key())
 
-        self.serverkeypair = Keypair(checkexists=True)
-        print 'self.serverkeypair on client exists is %s' % (self.serverkeypair.exists)
+        self.serverkeypair = Keypair(checkexists=True, showlog=True)
+        self.log('self.serverkeypair on client exists is %s' % (self.serverkeypair.exists))
         self.token = self.serverkeypair.checktoken()
-        print 'self.serverkeypair token %s' % (self.token)
+        self.log('self.serverkeypair token %s' % (self.token))
 
     def baseheaders(self):
         """Headers have consistent properties"""
@@ -33,7 +35,8 @@ class Clientapi(object):
     def exchangekeys(self):
         """Exchange Keys with server"""
         headers = self.baseheaders()
-        pprint(headers)
+        self.log("Clientapi exchangekeys sending headers, pprint follows")
+        #pprint(headers)
 
         url = '%s/exchangekeys' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
@@ -41,14 +44,35 @@ class Clientapi(object):
 
         if 'status' in jdata:
             status = jdata['status']
-            print 'status is %s' % (status)
+            self.log('status is %s' % (status))
             if status == 'serverkey':
-                encryptedtoken = jdata['token']
-                server_pubkey = jdata['server_pubkey']
-                print 'token is %s' % (encryptedtoken)
-                self.serverkeypair = Keypair(pubkeystring=server_pubkey)
-                token = self.serverkeypair.decrypt(encryptedtoken)
-                self.serverkeypair.saveserveronclient(token=token, pubkey=server_pubkey)
+                # jdata['server_pubkey'] is the base64 version of the public key
+                server_pubkey = base64.b64decode(jdata['server_pubkey'])
+                # TODO, test to see if I need this next line
+                self.serverkeypair = Keypair(pubkeystring=server_pubkey, showlog=True)
+                self.serverkeypair.saveserveronclient(pubkey=server_pubkey)
+
+    def gettoken(self, password):
+        """Exchange Keys with server"""
+        headers = self.baseheaders()
+        self.log("Clientapi gettoken sending headers, pprint follows")
+        headers['X-API-Password'] = password
+        pprint(headers)
+
+        url = '%s/token' % (self.baseurl)
+        jdata = fetch_json(url, headers=headers, data=None, method='POST')
+        pprint(jdata)
+
+        if 'status' in jdata:
+            status = jdata['status']
+            self.log('status is %s' % (status))
+            if status == 'Password Success':
+                encryptedtoken = jdata['encryptedtoken']
+                self.log('gettoken -> encryptedtoken is %s' % (encryptedtoken))
+                self.clientkeypair.showlog = True
+                token = self.clientkeypair.decrypt(encryptedtoken)
+                self.log('gettoken -> token is %s' % (token))
+                self.serverkeypair.saveserveronclient(token=token)
 
     def perform_add(self):
         data = []
@@ -56,34 +80,27 @@ class Clientapi(object):
         #pprint(data)
         #netdata = {"rrsets": data}
 
-        print "sending headers "
+        self.log("sending headers, pprint follows")
         pprint(headers)
 
         url = '%s/api' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=data, method='POST')
+        self.log("jdata from server, pprint follows")
         pprint(jdata)
+
+    def log(self, message):
+        """Logg, control output here"""
+        if self.showlog:
+            show = "Clientapi -> %s" % (message)
+            print(show)
 
 
 cliapi = Clientapi()
 if not cliapi.serverkeypair.exists:
+    print "No serverkeypair, lets exchange them"
     cliapi.exchangekeys()
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #if not self.serverkeypair.exists:
-        #    if not newtoken:
-        #        headers['X-API-Key'] = self.token
-        #    else:
-        #        headers['X-API-Key'] = 'sends_serverkey_token'
-        #else:
-        #    headers['X-API-Key'] = 'exists'
+    print "Exchange done exists is now %s" % (cliapi.serverkeypair.exists)
+    print "Now lets get the server to approve of your public key with your password :"
+    #password = getpass()
+    password = 'asdfqwer'
+    cliapi.gettoken(password)
