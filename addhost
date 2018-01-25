@@ -4,14 +4,22 @@ from admin_api import fetch_remote, fetch_json, build_rrset
 from pprint import pprint
 from admin_api.crypt import Keypair
 import base64
+import sys
+#import json
 
 mykeypair = Keypair()
 mypubkey = mykeypair.get_pub_key()
 b64 = base64.b64encode(mypubkey)
-print b64
+
+serverkeypair = Keypair(keyname='serverkeys', checkexists=True)
+print 'serverkeypair on client exists is %s' % (serverkeypair.exists)
+
 
 headers = {}
-headers['X-API-Key'] = 'ASDFASDF'
+if not serverkeypair.exists:
+    headers['X-API-Key'] = 'sendserverkey'
+else:
+    headers['X-API-Key'] = 'exists'
 headers['X-API-User'] = 'dbartley'
 headers['X-API-Pubkey'] = b64
 
@@ -23,5 +31,16 @@ data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
 
 url = 'http://localhost:9393/api'
 jdata = fetch_json(url, headers=headers, data=data, method='POST')
+pprint(jdata)
+print type(jdata)
 
-print jdata
+if 'status' in jdata:
+    status = jdata['status']
+    print 'status is %s' % (status)
+    if status == 'serverkey':
+        token = jdata['token']
+        server_pubkey = jdata['server_pubkey']
+        print 'token is %s' % (token)
+        #serverkeypair = Keypair(keyname='serverkeys', checkexists=True, pubkeystring=server_pubkey)
+        serverkeypair.savefromserver(token=token, pubkey=server_pubkey)
+
