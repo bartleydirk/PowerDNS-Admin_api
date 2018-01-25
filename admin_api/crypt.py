@@ -17,12 +17,14 @@ from Crypto import Random
 class Keypair(object):
     """Lets use public and private keys."""
 
-    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False):
+    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False, showlog=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
         self.priv_key_sting = None
         self.priv_key_object = None
         self.exists = False
+        self.username = username
+        self.showlog = showlog
         if not username:
             self.keypairname = 'server_keys'
         elif username == 'mykeys':
@@ -40,7 +42,7 @@ class Keypair(object):
         self.config.read(self.cnfgfile)
 
         if pubkeystring:
-            self.log("Setting pubkeystring")
+            self.log("Setting pubkeystring %s" % (pubkeystring))
             self.public_key_string = pubkeystring
         else:
             # get the public key string from the config file
@@ -53,14 +55,17 @@ class Keypair(object):
             self.log("priv_key_sting %s" % (bool(self.priv_key_sting)))
             if not self.priv_key_sting and not checkexists:
                 self.log('Private key Not in config will generate')
-            if self.public_key_string:
-                self.exists = True
 
         if not checkexists:
             if self.public_key_string:
                 self.__importkeys()
             else:
                 self.__genkeypair()
+
+        self.log('Checking truthyness  of public_key_string %s' % self.public_key_string)
+        if self.public_key_string:
+            self.exists = True
+
 
     def __repr__(self):
         retval = 'keypairname is "%s"\n' % (self.keypairname)
@@ -128,14 +133,14 @@ class Keypair(object):
 
     def saveserveronclient(self, token=None, pubkey=None):
         """Save the server public on client."""
-        section = 'serverkeys'
-        if section not in self.config.sections():
-            self.config.add_section(section)
+        self.keypairname = 'server_keys'
+        if self.keypairname not in self.config.sections():
+            self.config.add_section(self.keypairname)
         if token:
-            self.config.set(section, 'token', token)
+            self.config.set(self.keypairname, 'token', token)
 
         if pubkey:
-            self.config.set(section, 'public', base64.b64decode(pubkey))
+            self.config.set(self.keypairname, 'public', base64.b64decode(pubkey))
 
         if token or pubkey:
             # write the new token to config file
@@ -144,32 +149,31 @@ class Keypair(object):
     def saveclientonserver(self, token=None, username=None):
         """Save the client public key on server."""
         section = 'user_%s' % (username)
-        if section not in self.config.sections():
-            self.config.add_section(section)
+        if self.keypairname not in self.config.sections():
+            self.config.add_section(self.keypairname)
         if token:
-            self.config.set(section, 'token', token)
+            self.config.set(self.keypairname, 'token', token)
 
         if self.public_key_string:
-            self.config.set(section, 'public', self.public_key_string)
+            self.config.set(self.keypairname, 'public', self.public_key_string)
 
         if token or self.public_key_string:
             # write the new token to config file
             self.__writeconfig()
 
-    def createclienttoken(self, newtoken=False, username=None):
+    def checktoken(self):
         """Create a token for the client."""
-        if newtoken and username:
+        token = self.config.safe_get(self.keypairname, 'token')
+        if not token:
             token = self.randstring(128)
 
-            section = 'user_%s' % username
-            if section not in self.config.sections():
-                self.config.add_section(section)
+            if self.keypairname not in self.config.sections():
+                self.config.add_section(self.keypairname)
 
             # write the new token to config file
-            self.config.set(section, 'token', token)
+            self.config.set(self.keypairname, 'token', token)
             self.__writeconfig()
-            return token
-        return None
+        return token
 
     @classmethod
     def randstring(cls, bytecount):
@@ -178,8 +182,9 @@ class Keypair(object):
 
     def log(self, message):
         """Logg, control output here"""
-        show = "keyname %s - %s" % (self.keypairname, message)
-        print(show)
+        if self.showlog:
+            show = "keyname %s - %s" % (self.keypairname, message)
+            print(show)
 
 
 # print dir(RSA)
