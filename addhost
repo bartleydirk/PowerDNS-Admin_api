@@ -7,11 +7,11 @@ import base64
 import sys
 #import json
 
-mykeypair = Keypair()
+mykeypair = Keypair(username='mykeys')
 mypubkey = mykeypair.get_pub_key()
 b64 = base64.b64encode(mypubkey)
 
-serverkeypair = Keypair(keyname='serverkeys', checkexists=True)
+serverkeypair = Keypair(checkexists=True)
 print 'serverkeypair on client exists is %s' % (serverkeypair.exists)
 
 
@@ -42,5 +42,5 @@ if 'status' in jdata:
         server_pubkey = jdata['server_pubkey']
         print 'token is %s' % (token)
         #serverkeypair = Keypair(keyname='serverkeys', checkexists=True, pubkeystring=server_pubkey)
-        serverkeypair.savefromserver(token=token, pubkey=server_pubkey)
+        serverkeypair.saveserveronclient(token=token, pubkey=server_pubkey)
 

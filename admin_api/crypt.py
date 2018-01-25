@@ -1,55 +1,60 @@
 #!/usr/bin/env python
 """An encryption module to help with authentication tokens."""
 
-import sys
 import os
 import base64
 
-from admin_api import fetch_remote, fetch_json, build_rrset, ApiParser
-from pprint import pprint
-from Crypto.Cipher import DES
-from Crypto import Random
+# pylint: disable=E0401
+from admin_api import ApiParser
+# from pprint import pprint
+# from Crypto.Cipher import DES
 from Crypto.PublicKey import RSA
 from Crypto import Random
 
-# pylint: disable=
+# pylint: disable=E0001
 
 
 class Keypair(object):
     """Lets use public and private keys."""
 
-    def __init__(self, cnfgfile=None, keyname='mykeys', pubkeystring=None, checkexists=False):
+    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
         self.priv_key_sting = None
         self.priv_key_object = None
         self.exists = False
-        if keyname:
-            self.keypairname = keyname
-        else:
+        if not username:
+            self.keypairname = 'server_keys'
+        elif username == 'mykeys':
             self.keypairname = 'mykeys'
+        else:
+            self.keypairname = 'user_%s' % (username)
 
         if cnfgfile:
             self.cnfgfile = cnfgfile
         else:
-            oneup = os.path.abspath(os.path.join(__file__, ".."))
+            oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
             self.cnfgfile = '%s/keys.cfg' % oneup
-            print "config file is %s" % (self.cnfgfile)
+            self.log("config file is %s" % (self.cnfgfile))
         self.config = ApiParser()
         self.config.read(self.cnfgfile)
 
-        if not pubkeystring:
+        if pubkeystring:
+            self.log("Setting pubkeystring")
+            self.public_key_string = pubkeystring
+        else:
             # get the public key string from the config file
+            self.log("get the public and private key from config file")
             self.public_key_string = self.config.safe_get(self.keypairname,
                                                           'public')
             self.priv_key_sting = self.config.safe_get(self.keypairname,
                                                        'private')
+            self.log("public_key_string %s" % (bool(self.public_key_string)))
+            self.log("priv_key_sting %s" % (bool(self.priv_key_sting)))
             if not self.priv_key_sting and not checkexists:
-                print('Private key Not in config will generate')
+                self.log('Private key Not in config will generate')
             if self.public_key_string:
                 self.exists = True
-        else:
-            self.public_key_string = pubkeystring
 
         if not checkexists:
             if self.public_key_string:
@@ -57,45 +62,58 @@ class Keypair(object):
             else:
                 self.__genkeypair()
 
+    def __repr__(self):
+        retval = 'keypairname is "%s"\n' % (self.keypairname)
+        retval += 'public_key_string is "%s"\n' % (self.public_key_string)
+        retval += 'priv_key_sting is "%s"\n' % (self.priv_key_sting)
+        return retval
+
     def __importkeys(self):
+        """Import keys from config file."""
         if self.priv_key_sting:
             self.priv_key_object = RSA.importKey(self.priv_key_sting)
+        self.log('__importkeys importing public key %s' % (self.public_key_string))
         self.public_key_object = RSA.importKey(self.public_key_string)
 
     def __genkeypair(self):
+        """No keys, so lets create them."""
+        self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair")
         # generate the key pair and write to config file
         random_generator = Random.new().read
         self.priv_key_object = RSA.generate(4096, random_generator)
-        # print 'key is %s' % (self.priv_key_object)
+        # self.log('key is %s' % (self.priv_key_object))
         self.public_key_object = self.priv_key_object.publickey()
         self.public_key_string = self.public_key_object.exportKey('PEM')
+        self.log('public_key_string just generated %s' % (self.public_key_string))
         if self.keypairname not in self.config.sections():
             self.config.add_section(self.keypairname)
+        self.log("Setting Public and private keys in __genkeypair")
         self.config.set(self.keypairname, 'public', self.public_key_string)
         self.priv_key_sting = self.priv_key_object.exportKey('PEM')
         self.config.set(self.keypairname, 'private', self.priv_key_sting)
         self.__writeconfig()
 
         if self.debuggenkey:
-            print "can encrypt %s" % self.priv_key_object.can_encrypt()
-            print "can sign %s" % self.priv_key_object.can_sign()
-            print "has private %s" % self.priv_key_object.has_private()
+            self.log("can encrypt %s" % self.priv_key_object.can_encrypt())
+            self.log("can sign %s" % self.priv_key_object.can_sign())
+            self.log("has private %s" % self.priv_key_object.has_private())
 
-            print 'public key is %s' % self.public_key_string
+            self.log('public key is %s' % self.public_key_string)
 
     def __writeconfig(self):
+        """Write the configuration file."""
         configfile_fv = open(self.cnfgfile, 'w')
         self.config.write(configfile_fv)
-        print "wrote config file %s" % (self.cnfgfile)
+        self.log("wrote config file %s" % (self.cnfgfile))
 
     def encrypt(self, string_in):
         """Encrypt a string."""
         enc_data = self.public_key_object.encrypt(string_in, 32)
 
         if self.debuggenkey:
-            print "Encrypted data :"
-            print enc_data
-            print ""
+            self.log("Encrypted data :")
+            self.log(enc_data)
+            self.log("")
         return enc_data
 
     def decrypt(self, enc_data):
@@ -108,7 +126,8 @@ class Keypair(object):
         """Return The public key."""
         return self.public_key_string
 
-    def savefromserver(self, token=None, pubkey=None):
+    def saveserveronclient(self, token=None, pubkey=None):
+        """Save the server public on client."""
         section = 'serverkeys'
         if section not in self.config.sections():
             self.config.add_section(section)
@@ -116,14 +135,29 @@ class Keypair(object):
             self.config.set(section, 'token', token)
 
         if pubkey:
-            self.config.set(section, 'public', pubkey)
+            self.config.set(section, 'public', base64.b64decode(pubkey))
 
         if token or pubkey:
             # write the new token to config file
             self.__writeconfig()
 
+    def saveclientonserver(self, token=None, username=None):
+        """Save the client public key on server."""
+        section = 'user_%s' % (username)
+        if section not in self.config.sections():
+            self.config.add_section(section)
+        if token:
+            self.config.set(section, 'token', token)
+
+        if self.public_key_string:
+            self.config.set(section, 'public', self.public_key_string)
+
+        if token or self.public_key_string:
+            # write the new token to config file
+            self.__writeconfig()
+
     def createclienttoken(self, newtoken=False, username=None):
-        """Create a token for the client"""
+        """Create a token for the client."""
         if newtoken and username:
             token = self.randstring(128)
 
@@ -135,10 +169,17 @@ class Keypair(object):
             self.config.set(section, 'token', token)
             self.__writeconfig()
             return token
+        return None
 
     @classmethod
     def randstring(cls, bytecount):
+        """Classmethod to generate some random strings"""
         return base64.b64encode(Random.get_random_bytes(bytecount))
+
+    def log(self, message):
+        """Logg, control output here"""
+        show = "keyname %s - %s" % (self.keypairname, message)
+        print(show)
 
 
 # print dir(RSA)
