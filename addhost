@@ -7,43 +7,83 @@ import base64
 import sys
 #import json
 
-mykeypair = Keypair(username='mykeys')
-mypubkey = mykeypair.get_pub_key()
-b64 = base64.b64encode(mypubkey)
 
-sys.exit()
+class Clientapi(object):
+    """Api Client Class."""
 
-serverkeypair = Keypair(checkexists=True)
-print 'serverkeypair on client exists is %s' % (serverkeypair.exists)
+    def __init__(self):
+        self.baseurl = 'http://localhost:9393'
+        self.username = 'dbartley'
 
-#sys.exit()
+        self.mykeypair = Keypair(username='mykeys')
+        self.pubkey_b64 = base64.b64encode(self.mykeypair.get_pub_key())
+
+        self.serverkeypair = Keypair(checkexists=True)
+        print 'self.serverkeypair on client exists is %s' % (self.serverkeypair.exists)
+        self.token = self.serverkeypair.checktoken()
+        print 'self.serverkeypair token %s' % (self.token)
+
+    def baseheaders(self):
+        """Headers have consistent properties"""
+        headers = {}
+        headers['X-API-User'] = self.username
+        headers['X-API-Pubkey'] = self.pubkey_b64
+        return headers
+
+    def exchangekeys(self):
+        """Exchange Keys with server"""
+        headers = self.baseheaders()
+        pprint(headers)
+
+        url = '%s/exchangekeys' % (self.baseurl)
+        jdata = fetch_json(url, headers=headers, data=None, method='POST')
+        pprint(jdata)
+
+        if 'status' in jdata:
+            status = jdata['status']
+            print 'status is %s' % (status)
+            if status == 'serverkey':
+                encryptedtoken = jdata['token']
+                server_pubkey = jdata['server_pubkey']
+                print 'token is %s' % (encryptedtoken)
+                self.serverkeypair = Keypair(pubkeystring=server_pubkey)
+                token = self.serverkeypair.decrypt(encryptedtoken)
+                self.serverkeypair.saveserveronclient(token=token, pubkey=server_pubkey)
+
+    def perform_add(self):
+        data = []
+        data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
+        #pprint(data)
+        #netdata = {"rrsets": data}
+
+        print "sending headers "
+        pprint(headers)
+
+        url = '%s/api' % (self.baseurl)
+        jdata = fetch_json(url, headers=headers, data=data, method='POST')
+        pprint(jdata)
 
 
-headers = {}
-if not serverkeypair.exists:
-    headers['X-API-Key'] = 'sendserverkey'
-else:
-    headers['X-API-Key'] = 'exists'
-headers['X-API-User'] = 'dbartley'
-headers['X-API-Pubkey'] = b64
+cliapi = Clientapi()
+if not cliapi.serverkeypair.exists:
+    cliapi.exchangekeys()
 
-data = []
 
-data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
-#pprint(data)
-#netdata = {"rrsets": data}
 
-url = 'http://localhost:9393/api'
-jdata = fetch_json(url, headers=headers, data=data, method='POST')
-pprint(jdata)
 
-if 'status' in jdata:
-    status = jdata['status']
-    print 'status is %s' % (status)
-    if status == 'serverkey':
-        token = jdata['token']
-        server_pubkey = jdata['server_pubkey']
-        print 'token is %s' % (token)
-        #serverkeypair = Keypair(keyname='serverkeys', checkexists=True, pubkeystring=server_pubkey)
-        serverkeypair.saveserveronclient(token=token, pubkey=server_pubkey)
 
+
+
+
+
+
+
+
+
+        #if not self.serverkeypair.exists:
+        #    if not newtoken:
+        #        headers['X-API-Key'] = self.token
+        #    else:
+        #        headers['X-API-Key'] = 'sends_serverkey_token'
+        #else:
+        #    headers['X-API-Key'] = 'exists'

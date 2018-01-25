@@ -66,7 +66,6 @@ class Keypair(object):
         if self.public_key_string:
             self.exists = True
 
-
     def __repr__(self):
         retval = 'keypairname is "%s"\n' % (self.keypairname)
         retval += 'public_key_string is "%s"\n' % (self.public_key_string)
@@ -85,7 +84,7 @@ class Keypair(object):
         self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair")
         # generate the key pair and write to config file
         random_generator = Random.new().read
-        self.priv_key_object = RSA.generate(4096, random_generator)
+        self.priv_key_object = RSA.generate(2048, random_generator)
         # self.log('key is %s' % (self.priv_key_object))
         self.public_key_object = self.priv_key_object.publickey()
         self.public_key_string = self.public_key_object.exportKey('PEM')
@@ -164,15 +163,17 @@ class Keypair(object):
     def checktoken(self):
         """Create a token for the client."""
         token = self.config.safe_get(self.keypairname, 'token')
-        if not token:
-            token = self.randstring(128)
+        return token
 
-            if self.keypairname not in self.config.sections():
-                self.config.add_section(self.keypairname)
+    def gentoken(self):
+        token = self.randstring(128)
 
-            # write the new token to config file
-            self.config.set(self.keypairname, 'token', token)
-            self.__writeconfig()
+        if self.keypairname not in self.config.sections():
+            self.config.add_section(self.keypairname)
+
+        # write the new token to config file
+        self.config.set(self.keypairname, 'token', token)
+        self.__writeconfig()
         return token
 
     @classmethod
