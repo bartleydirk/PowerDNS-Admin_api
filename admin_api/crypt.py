@@ -3,10 +3,13 @@
 
 import os
 import base64
+import uuid
+# from pprint import pprint
 
 # pylint: disable=E0401
 from Crypto.PublicKey import RSA
 from Crypto import Random
+
 
 from admin_api import ApiParser
 
@@ -29,8 +32,8 @@ def limitlines(inval):
 class Keypair(object):
     """Lets use public and private keys."""
 
-    # pylint: disable=R0913
-    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False, showlog=False,
+    # pylint: disable=R0913,R0902
+    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, uuid_=None, checkexists=False, showlog=False,
                  isclient=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
@@ -41,8 +44,10 @@ class Keypair(object):
         self.public_key_object = None
         self.priv_key_object = None
         self.public_key_string = pubkeystring
+        self.uuid = uuid_
         self.isclient = isclient
         self.userpair = False
+
         if not username:
             self.keypairname = 'server_keys'
         elif username == 'mykeys':
@@ -52,6 +57,7 @@ class Keypair(object):
             self.keypairname = 'user_%s' % (username)
             self.userpair = True
         self.sever_pair_onclient = not self.userpair and self.isclient
+        self.client_pair_onserver = self.userpair and not self.isclient
 
         if cnfgfile:
             self.cnfgfile = cnfgfile
@@ -61,41 +67,40 @@ class Keypair(object):
             self.log("config file is %s" % (self.cnfgfile))
         self.config = ApiParser()
         self.config.read(self.cnfgfile)
+        if not pubkeystring:
+            self.__getkeysfromconfig()
 
         if not checkexists:
             self.initbefore()
 
-        self.log('Checking truthyness of public_key_string %s\n' % limitlines(self.public_key_string))
+        self.log('Checking truthyness of public_key_string\n%s' % limitlines(self.public_key_string))
 
     def initbefore(self):
-        """Init Steps when init can be done from init"""
+        """Init Steps when init can be done from init."""
         if self.public_key_string:
             # we wont pass a public key string if it is in the config
             self.log("Setting pubkeystring :\n%s" % (limitlines(self.public_key_string)))
             self.__rsaobjects_fromkeystrings()
-        else:
-            # no public key string, must need to get from config file?
-            self.__getkeysfromconfig()
 
-            # if we neither have a public key string or an object, we need to generate.
-            if not self.exists and not self.sever_pair_onclient:
-                self.__genkeypair()
+        # if we neither have a public key string or an object, we need to generate.
+        if not self.exists and not self.sever_pair_onclient:
+            self.__genkeypair()
 
-    def initafter(self, pubkey):
+    def initafter(self, pubkey, uuid_):
         """Initialize After for client when first step is to check existence."""
         self.log("initafter initializing after init, must be in client %s" % (bool(self.public_key_string)))
         if pubkey:
             self.public_key_string = pubkey
-            self.saveserveronclient(pubkey=pubkey)
-        else:
-            self.__getkeysfromconfig()
+            self.uuid = uuid_
+            self.saveserveronclient(pubkey=pubkey, uuid_=uuid_)
         self.__rsaobjects_fromkeystrings()
 
     def __repr__(self):
+        """Representation of the class."""
         retval = 'Keypair __repr__ :\n'
-        retval += 'keypairname is "%s"\n' % (self.keypairname)
-        retval += 'public_key_string is "%s"\n' % (limitlines(self.public_key_string))
-        retval += 'priv_key_sting is "%s"\n' % (limitlines(self.priv_key_sting))
+        retval += '    keypairname is "%s"\n' % (self.keypairname)
+        retval += '    public_key_string is "%s"\n' % (limitlines(self.public_key_string))
+        retval += '    priv_key_sting is "%s"\n' % (limitlines(self.priv_key_sting))
         return retval
 
     def __rsaobjects_fromkeystrings(self):
@@ -112,10 +117,9 @@ class Keypair(object):
         """Import the keys from the config file."""
         # get the public key string from the config file
         self.log("__getkeysfromconfig get the public and private key from config file")
-        self.public_key_string = self.config.safe_get(self.keypairname,
-                                                      'public')
-        self.priv_key_sting = self.config.safe_get(self.keypairname,
-                                                   'private')
+        self.public_key_string = self.config.safe_get(self.keypairname, 'public')
+        self.priv_key_sting = self.config.safe_get(self.keypairname, 'private')
+        self.uuid = self.config.safe_get(self.keypairname, 'uuid')
         self.log("__getkeysfromconfig public_key_string %s" % (bool(self.public_key_string)))
         self.log("__getkeysfromconfig priv_key_sting %s" % (bool(self.priv_key_sting)))
         if self.public_key_string:
@@ -131,10 +135,12 @@ class Keypair(object):
 
     def __genkeypair(self):
         """No keys, so lets create them."""
-        if self.sever_pair_onclient:
+        if self.sever_pair_onclient or self.client_pair_onserver:
             self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
+            # pprint(asdlfkjasdlkfjlsdkfjlasdkfjsdlkfjl)
         # generate the key pair and write to config file
         random_generator = Random.new().read
+        self.uuid = str(uuid.uuid4())
         self.priv_key_object = RSA.generate(2048, random_generator)
         # create public key object from method in private key object
         self.public_key_object = self.priv_key_object.publickey()
@@ -150,6 +156,7 @@ class Keypair(object):
         self.config.set(self.keypairname, 'public', self.public_key_string)
         self.priv_key_sting = self.priv_key_object.exportKey('PEM')
         self.config.set(self.keypairname, 'private', self.priv_key_sting)
+        self.config.set(self.keypairname, 'uuid', self.uuid)
         self.__writeconfig()
 
         if self.debuggenkey:
@@ -184,9 +191,13 @@ class Keypair(object):
 
     def get_pub_key(self):
         """Return The public key."""
-        return self.public_key_string
+        if self.public_key_string:
+            retval = self.public_key_string, self.uuid
+        else:
+            retval = '', ''
+        return retval
 
-    def saveserveronclient(self, token=None, pubkey=None):
+    def saveserveronclient(self, token=None, pubkey=None, uuid_=None):
         """Save the server public on client."""
         self.keypairname = 'server_keys'
         if self.keypairname not in self.config.sections():
@@ -195,7 +206,9 @@ class Keypair(object):
             self.config.set(self.keypairname, 'token', token)
 
         if pubkey:
+            self.log('saveserveronclient pubkey %s uuid %s' % (limitlines(pubkey), uuid_))
             self.config.set(self.keypairname, 'public', pubkey)
+            self.config.set(self.keypairname, 'uuid', uuid_)
 
         if token or pubkey:
             # write the new token to config file
@@ -210,6 +223,7 @@ class Keypair(object):
 
         if self.public_key_string:
             self.config.set(self.keypairname, 'public', self.public_key_string)
+            self.config.set(self.keypairname, 'uuid', self.uuid)
 
         if token or self.public_key_string:
             # write the new token to config file
@@ -221,7 +235,7 @@ class Keypair(object):
         return token
 
     def gentoken(self):
-        """Generate a random token to save on sever, pass with password to client"""
+        """Generate a random token to save on sever, pass with password to client."""
         token = self.randstring(128)
 
         if self.keypairname not in self.config.sections():
@@ -234,13 +248,13 @@ class Keypair(object):
 
     @classmethod
     def randstring(cls, bytecount):
-        """Classmethod to generate some random strings"""
+        """Classmethod to generate some random strings."""
         return base64.b64encode(Random.get_random_bytes(bytecount))
 
     def log(self, message):
-        """Logg, control output here"""
+        """Logg, control output here."""
         if self.showlog:
-            show = "Keypair keyname %s -> %s" % (self.keypairname, message)
+            show = "Keypair   -> keyname %s -> %s" % (self.keypairname, message)
             print(show)
 
 

@@ -6,7 +6,8 @@ import base64
 from pprint import pprint
 
 from admin_api import fetch_json, build_rrset
-from admin_api.crypt import Keypair
+from admin_api.crypt import Keypair, limitlines
+# import sys
 
 # from getpass import getpass
 
@@ -20,7 +21,10 @@ class Clientapi(object):
         self.showlog = True
 
         self.clientkeypair = Keypair(username='mykeys', showlog=True, isclient=True)
-        self.pubkey_b64 = base64.b64encode(self.clientkeypair.get_pub_key())
+        pubkey, uuid = self.clientkeypair.get_pub_key()
+        # self.log('__init__ pub %s uuid %s' % (limitlines(pubkey), uuid))
+        self.pubkey_b64 = base64.b64encode(pubkey)
+        self.uuid_client_b64 = base64.b64encode(uuid)
 
         self.serverkeypair = Keypair(checkexists=True, showlog=True, isclient=True)
         self.log('self.serverkeypair on client exists is %s' % (self.serverkeypair.exists))
@@ -33,12 +37,14 @@ class Clientapi(object):
         headers['X-API-User'] = self.username
         if pubkey:
             headers['X-API-Pubkey'] = self.pubkey_b64
+            headers['X-API-clientuuid'] = self.uuid_client_b64
         return headers
 
     def exchangekeys(self):
         """Exchange Keys with server"""
         headers = self.baseheaders()
-        self.log("Clientapi exchangekeys sending headers")
+        self.log("Clientapi exchangekeys sending headers pprint follows")
+        pprint(headers)
 
         url = '%s/exchangekeys' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
@@ -51,8 +57,10 @@ class Clientapi(object):
             if status == 'serverkey':
                 # jdata['server_pubkey'] is the base64 version of the public key
                 server_pubkey = base64.b64decode(jdata['server_pubkey'])
-                self.log('server_pubkey is %s' % (server_pubkey))
-                self.serverkeypair.initafter(server_pubkey)
+                server_uuid = base64.b64decode(jdata['server_uuid'])
+                self.log('exchangekeys server_pubkey is "%s" server_uuid is "%s"' %
+                         (limitlines(server_pubkey), server_uuid))
+                self.serverkeypair.initafter(server_pubkey, server_uuid)
 
     def gettoken(self, passwd):
         """Exchange Keys with server"""
