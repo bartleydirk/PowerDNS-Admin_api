@@ -71,7 +71,7 @@ class Keypair(object):
             else:
                 self.__genkeypair()
 
-        self.log('Checking truthyness of public_key_string %s' % limitlines(self.public_key_string))
+        self.log('Checking truthyness of public_key_string %s\n' % limitlines(self.public_key_string))
         if self.public_key_string:
             self.exists = True
 
@@ -134,12 +134,15 @@ class Keypair(object):
     def decrypt(self, enc_data):
         """Decrypt a sting."""
         if self.priv_key_sting:
+            self.showlog = True
             self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
             enc_data = (base64.b64decode(enc_data))
-            self.log("decrypt b64 decoded string is %s, should look like fucked up shit?" % enc_data)
+            #self.log("decrypt b64 decoded string is %s, should look like blanked up blankedy?" % enc_data)
             net_decrypted = self.priv_key_object.decrypt(enc_data)
             self.log("decrypt string is %s" % net_decrypted)
-            return 
+            return net_decrypted
+        else:
+            self.log('No private key, most likely the wrong keypair being used')
         return None
 
     def get_pub_key(self):

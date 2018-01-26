@@ -25,11 +25,12 @@ class Clientapi(object):
         self.token = self.serverkeypair.checktoken()
         self.log('self.serverkeypair token %s' % (self.token))
 
-    def baseheaders(self):
+    def baseheaders(self, pubkey=True):
         """Headers have consistent properties"""
         headers = {}
         headers['X-API-User'] = self.username
-        headers['X-API-Pubkey'] = self.pubkey_b64
+        if pubkey:
+            headers['X-API-Pubkey'] = self.pubkey_b64
         return headers
 
     def exchangekeys(self):
@@ -54,9 +55,10 @@ class Clientapi(object):
 
     def gettoken(self, password):
         """Exchange Keys with server"""
-        headers = self.baseheaders()
+        headers = self.baseheaders(pubkey=False)
         self.log("Clientapi gettoken sending headers, pprint follows")
-        headers['X-API-Password'] = password
+        encryptedpassword = self.serverkeypair.encrypt(password)
+        headers['X-API-Password'] = encryptedpassword
         pprint(headers)
 
         url = '%s/token' % (self.baseurl)
