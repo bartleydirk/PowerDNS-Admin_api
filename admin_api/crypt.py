@@ -5,27 +5,31 @@ import os
 import base64
 
 # pylint: disable=E0401
-from admin_api import ApiParser
-# from pprint import pprint
-# from Crypto.Cipher import DES
 from Crypto.PublicKey import RSA
 from Crypto import Random
 
+from admin_api import ApiParser
+
 # pylint: disable=E0001
 
+
 def limitlines(inval):
-    if not inval:
-        return
-    retval = ''
-    lst = inval.split('\n')
-    for index, value in enumerate(lst):
-        if index < 2:
-            retval += '%s\n' % value
+    """Limit the number of lines displayed for some of the log."""
+    if inval:
+        retval = ''
+        lst = inval.split('\n')
+        for index, value in enumerate(lst):
+            if index < 2:
+                retval += '%s\n' % value
+    else:
+        retval = None
     return retval
+
 
 class Keypair(object):
     """Lets use public and private keys."""
 
+    # pylint: disable=R0913
     def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False, showlog=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
@@ -76,7 +80,6 @@ class Keypair(object):
             self.exists = True
 
     def __repr__(self):
-        #re.compile("")
         retval = 'Keypair __repr__ :\n'
         retval += 'keypairname is "%s"\n' % (self.keypairname)
         retval += 'public_key_string is "%s"\n' % (limitlines(self.public_key_string))
@@ -125,10 +128,6 @@ class Keypair(object):
         """Encrypt a string."""
         enc_data = self.public_key_object.encrypt(string_in, 32)[0]
         enc_data = base64.b64encode(enc_data)
-
-        if True:
-            self.log("Encrypted data :")
-            self.log(enc_data)
         return enc_data
 
     def decrypt(self, enc_data):
@@ -137,9 +136,7 @@ class Keypair(object):
             self.showlog = True
             self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
             enc_data = (base64.b64decode(enc_data))
-            #self.log("decrypt b64 decoded string is %s, should look like blanked up blankedy?" % enc_data)
             net_decrypted = self.priv_key_object.decrypt(enc_data)
-            self.log("decrypt string is %s" % net_decrypted)
             return net_decrypted
         else:
             self.log('No private key, most likely the wrong keypair being used')
@@ -158,16 +155,14 @@ class Keypair(object):
             self.config.set(self.keypairname, 'token', token)
 
         if pubkey:
-            #self.log('pubkey passed to saveserveronclient %s' % pubkey)
             self.config.set(self.keypairname, 'public', pubkey)
 
         if token or pubkey:
             # write the new token to config file
             self.__writeconfig()
 
-    def saveclientonserver(self, token=None, username=None):
+    def saveclientonserver(self, token=None):
         """Save the client public key on server."""
-        section = 'user_%s' % (username)
         if self.keypairname not in self.config.sections():
             self.config.add_section(self.keypairname)
         if token:
@@ -186,6 +181,7 @@ class Keypair(object):
         return token
 
     def gentoken(self):
+        """Generate a random token to save on sever, pass with password to client"""
         token = self.randstring(128)
 
         if self.keypairname not in self.config.sections():

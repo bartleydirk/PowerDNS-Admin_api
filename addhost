@@ -5,9 +5,9 @@ from pprint import pprint
 from admin_api.crypt import Keypair
 import base64
 import sys
-#import json
 import re
 from getpass import getpass
+
 
 class Clientapi(object):
     """Api Client Class."""
@@ -36,8 +36,7 @@ class Clientapi(object):
     def exchangekeys(self):
         """Exchange Keys with server"""
         headers = self.baseheaders()
-        self.log("Clientapi exchangekeys sending headers, pprint follows")
-        #pprint(headers)
+        self.log("Clientapi exchangekeys sending headers")
 
         url = '%s/exchangekeys' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
@@ -79,8 +78,6 @@ class Clientapi(object):
     def perform_add(self):
         data = []
         data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
-        #pprint(data)
-        #netdata = {"rrsets": data}
 
         self.log("sending headers, pprint follows")
         pprint(headers)
@@ -99,10 +96,10 @@ class Clientapi(object):
 
 cliapi = Clientapi()
 if not cliapi.serverkeypair.exists:
-    print "No serverkeypair, lets exchange them"
+    print("No serverkeypair, lets exchange them")
     cliapi.exchangekeys()
-    print "Exchange done exists is now %s" % (cliapi.serverkeypair.exists)
-    print "Now lets get the server to approve of your public key with your password :"
-    #password = getpass()
+    print("Exchange done exists is now %s" % (cliapi.serverkeypair.exists))
+    print("Now lets get the server to approve of your public key with your password :")
+    # password = getpass()
     password = 'asdfqwer'
     cliapi.gettoken(password)
