@@ -67,6 +67,7 @@ class Keypair(object):
             self.log("config file is %s" % (self.cnfgfile))
         self.config = ApiParser()
         self.config.read(self.cnfgfile)
+        # do not want the keys from config if on client getting public key from server
         if not pubkeystring:
             self.__getkeysfromconfig()
 
@@ -105,7 +106,7 @@ class Keypair(object):
 
     def __rsaobjects_fromkeystrings(self):
         """Import keys from config file."""
-        self.showlog = True
+        # self.showlog = True
         self.log('__rsaobjects_fromkeystrings importing public key :\n%s' % (limitlines(self.public_key_string)))
         self.public_key_object = RSA.importKey(self.public_key_string)
         if self.priv_key_sting:
@@ -180,7 +181,7 @@ class Keypair(object):
     def decrypt(self, enc_data):
         """Decrypt a sting."""
         if self.priv_key_sting:
-            self.showlog = True
+            # self.showlog = True
             self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
             enc_data = (base64.b64decode(enc_data))
             net_decrypted = self.priv_key_object.decrypt(enc_data)
@@ -229,10 +230,10 @@ class Keypair(object):
             # write the new token to config file
             self.__writeconfig()
 
-    def checktoken(self):
-        """Create a token for the client."""
-        token = self.config.safe_get(self.keypairname, 'token')
-        return token
+    # def checktoken(self):
+    #    """Create a token for the client."""
+    #    token = self.config.safe_get(self.keypairname, 'token')
+    #    return token
 
     def gentoken(self):
         """Generate a random token to save on sever, pass with password to client."""
