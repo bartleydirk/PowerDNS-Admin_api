@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 """This is a class and a script to api to PowerDnsAdmin."""
 
-from admin_api import fetch_remote, fetch_json, build_rrset
-from pprint import pprint
-from admin_api.crypt import Keypair
+# pylint: disable=E0401
 import base64
-import sys
-import re
-from getpass import getpass
+from pprint import pprint
+
+from admin_api import fetch_json, build_rrset
+from admin_api.crypt import Keypair
+
+# from getpass import getpass
 
 
 class Clientapi(object):
@@ -51,15 +52,13 @@ class Clientapi(object):
                 # jdata['server_pubkey'] is the base64 version of the public key
                 server_pubkey = base64.b64decode(jdata['server_pubkey'])
                 self.log('server_pubkey is %s' % (server_pubkey))
-                # TODO, test to see if I need this next line
                 self.serverkeypair.initafter(server_pubkey)
-                #self.serverkeypair.saveserveronclient(pubkey=server_pubkey)
 
-    def gettoken(self, password):
+    def gettoken(self, passwd):
         """Exchange Keys with server"""
         headers = self.baseheaders(pubkey=False)
         self.log("Clientapi gettoken sending headers, pprint follows")
-        encryptedpassword = self.serverkeypair.encrypt(password)
+        encryptedpassword = self.serverkeypair.encrypt(passwd)
         headers['X-API-Password'] = encryptedpassword
         pprint(headers)
 
@@ -79,9 +78,10 @@ class Clientapi(object):
                 self.serverkeypair.saveserveronclient(token=token)
 
     def perform_add(self):
+        """Perform add, this is the whole purpos, the rest is to authenticate the api script"""
         data = []
         data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
-
+        headers = self.baseheaders(pubkey=False)
         self.log("sending headers, pprint follows")
         pprint(headers)
 
@@ -97,12 +97,11 @@ class Clientapi(object):
             print(show)
 
 
-cliapi = Clientapi()
-if not cliapi.serverkeypair.exists:
+CLIAPI = Clientapi()
+if not CLIAPI.serverkeypair.exists:
     print("########## No serverkeypair, lets exchange them ########################")
-    cliapi.exchangekeys()
-    print("########## Exchange done exists is now %s ###############################" % (cliapi.serverkeypair.exists))
+    CLIAPI.exchangekeys()
+    print("########## Exchange done exists is now %s ###############################" % (CLIAPI.serverkeypair.exists))
     print("You a token, the server needs your password : ")
     # password = getpass()
-    password = 'asdfqwer'
-    cliapi.gettoken(password)
+    CLIAPI.gettoken('asdfqwer')

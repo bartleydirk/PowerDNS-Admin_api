@@ -30,7 +30,8 @@ class Keypair(object):
     """Lets use public and private keys."""
 
     # pylint: disable=R0913
-    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False, showlog=False, isclient=False):
+    def __init__(self, cnfgfile=None, username=None, pubkeystring=None, checkexists=False, showlog=False,
+                 isclient=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
         self.priv_key_sting = None
@@ -89,8 +90,6 @@ class Keypair(object):
         else:
             self.__getkeysfromconfig()
         self.__rsaobjects_fromkeystrings()
-        #if not self.exists and not self.sever_pair_onclient:
-        #    self.__genkeypair()
 
     def __repr__(self):
         retval = 'Keypair __repr__ :\n'
@@ -106,7 +105,7 @@ class Keypair(object):
         self.public_key_object = RSA.importKey(self.public_key_string)
         if self.priv_key_sting:
             if self.isclient:
-                pprint(asdflkasdfjlksdj)
+                self.log('__rsaobjects_fromkeystrings should never get here')
             self.priv_key_object = RSA.importKey(self.priv_key_sting)
 
     def __getkeysfromconfig(self):
@@ -124,6 +123,7 @@ class Keypair(object):
 
     @property
     def exists(self):
+        """Property for if the public key string or object exists."""
         retval = False
         if self.public_key_string or self.public_key_object:
             retval = True
@@ -132,8 +132,7 @@ class Keypair(object):
     def __genkeypair(self):
         """No keys, so lets create them."""
         if self.sever_pair_onclient:
-            pprint(asdf)
-        self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair")
+            self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
         # generate the key pair and write to config file
         random_generator = Random.new().read
         self.priv_key_object = RSA.generate(2048, random_generator)
