@@ -198,54 +198,56 @@ class Keypair(object):
             retval = '', ''
         return retval
 
-    def saveserveronclient(self, token=None, pubkey=None, uuid_=None):
+    def saveserveronclient(self, token_=None, pubkey=None, uuid_=None):
         """Save the server public on client."""
         self.keypairname = 'server_keys'
         if self.keypairname not in self.config.sections():
             self.config.add_section(self.keypairname)
-        if token:
-            self.config.set(self.keypairname, 'token', token)
+        if token_:
+            self.config.set(self.keypairname, 'token', token_)
 
         if pubkey:
             self.log('saveserveronclient pubkey %s uuid %s' % (limitlines(pubkey), uuid_))
             self.config.set(self.keypairname, 'public', pubkey)
             self.config.set(self.keypairname, 'uuid', uuid_)
 
-        if token or pubkey:
+        if token_ or pubkey:
             # write the new token to config file
             self.__writeconfig()
 
-    def saveclientonserver(self, token=None):
+    def saveclientonserver(self, token_=None):
         """Save the client public key on server."""
         if self.keypairname not in self.config.sections():
             self.config.add_section(self.keypairname)
-        if token:
-            self.config.set(self.keypairname, 'token', token)
+        if token_:
+            self.config.set(self.keypairname, 'token', token_)
 
         if self.public_key_string:
             self.config.set(self.keypairname, 'public', self.public_key_string)
             self.config.set(self.keypairname, 'uuid', self.uuid)
 
-        if token or self.public_key_string:
+        if token_ or self.public_key_string:
             # write the new token to config file
             self.__writeconfig()
 
-    # def checktoken(self):
-    #    """Create a token for the client."""
-    #    token = self.config.safe_get(self.keypairname, 'token')
-    #    return token
+    @property
+    def token(self):
+        """Get a token for the client."""
+        token_ = self.config.safe_get(self.keypairname, 'token')
+        self.log('token property %s' % (token_))
+        return token_
 
     def gentoken(self):
         """Generate a random token to save on sever, pass with password to client."""
-        token = self.randstring(128)
+        token_ = self.randstring(128)
 
         if self.keypairname not in self.config.sections():
             self.config.add_section(self.keypairname)
 
         # write the new token to config file
-        self.config.set(self.keypairname, 'token', token)
+        self.config.set(self.keypairname, 'token', token_)
         self.__writeconfig()
-        return token
+        return token_
 
     @classmethod
     def randstring(cls, bytecount):

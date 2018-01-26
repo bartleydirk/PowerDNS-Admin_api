@@ -9,7 +9,7 @@ from admin_api import fetch_json, build_rrset
 from admin_api.crypt import Keypair, limitlines
 import sys
 
-# from getpass import getpass
+from getpass import getpass
 
 
 class Clientapi(object):
@@ -28,8 +28,6 @@ class Clientapi(object):
 
         self.serverkeypair = Keypair(checkexists=True, showlog=False, isclient=True)
         self.log('self.serverkeypair on client exists is %s' % (self.serverkeypair.exists))
-        # self.token = self.serverkeypair.checktoken()
-        # self.log('self.serverkeypair token %s' % (self.token))
 
     def baseheaders(self, pubkey=True):
         """Headers have consistent properties"""
@@ -72,6 +70,28 @@ class Clientapi(object):
             else:
                 return False
 
+    def checktoken(self):
+        """Exchange Keys with server"""
+        headers = self.baseheaders(pubkey=False)
+        self.log("Clientapi checktoken encrypting token %s" % (self.serverkeypair.token))
+        encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+        retval = False
+        if self.serverkeypair.token:
+            headers['X-API-Key'] = encryptedtoken
+            pprint(headers)
+
+            url = '%s/token_check' % (self.baseurl)
+            jdata = fetch_json(url, headers=headers, data=None, method='POST')
+            pprint(jdata)
+
+            if 'status' in jdata:
+                status = jdata['status']
+                self.log('status is %s' % (status))
+                if status == 'Token Success':
+                    retval = True
+        print("checktoken returning %s" % retval)
+        return retval
+
     def gettoken(self, passwd):
         """Exchange Keys with server"""
         headers = self.baseheaders(pubkey=False)
@@ -80,7 +100,7 @@ class Clientapi(object):
         headers['X-API-Password'] = encryptedpassword
         pprint(headers)
 
-        url = '%s/token' % (self.baseurl)
+        url = '%s/token_request' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
         pprint(jdata)
 
@@ -91,15 +111,21 @@ class Clientapi(object):
                 encryptedtoken = jdata['encryptedtoken']
                 self.log('gettoken -> encryptedtoken is %s' % (encryptedtoken))
                 # self.clientkeypair.showlog = True
-                token = self.clientkeypair.decrypt(encryptedtoken)
-                self.log('gettoken -> token is %s' % (token))
-                self.serverkeypair.saveserveronclient(token=token)
+                token_ = self.clientkeypair.decrypt(encryptedtoken)
+                self.log('gettoken -> token is %s' % (token_))
+                self.serverkeypair.saveserveronclient(token_=token_)
 
     def perform_add(self):
         """Perform add, this is the whole purpos, the rest is to authenticate the api script"""
         data = []
-        data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.92'))
+        data.append(build_rrset(name='fredd.spotx.tv.', ipaddr='192.168.2.93'))
         headers = self.baseheaders(pubkey=False)
+
+        encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+        retval = False
+        if self.serverkeypair.token:
+            headers['X-API-Key'] = encryptedtoken
+
         self.log("sending headers, pprint follows")
         pprint(headers)
 
@@ -129,7 +155,31 @@ while not done:
 print("Keys exchanged %s" % CLIAPI.serverkeypair.exists)
 
 if CLIAPI.serverkeypair.exists:
-    print("########## Exchange done exists is now %s ###############################" % (CLIAPI.serverkeypair.exists))
-    print("You want a token, the server needs your password : ")
-    # password = getpass()
-    CLIAPI.gettoken('asdfqwer')
+    print("########## Exchange done exists is now %s, CHECKING TOKEN ###############################" %
+          (CLIAPI.serverkeypair.exists))
+    # Start the outer loop checking password
+    outercounter = 0
+    outerdone = False
+    while not outerdone:
+        print("Looping till the token is valid : ")
+        if CLIAPI.checktoken():
+            outerdone = True
+        else:
+            # start the inner loop checkingpassword
+            innercounter = 0
+            innerdone = False
+            while not innerdone:
+                print("You want a token, the server needs your password : ")
+                password = getpass()
+                if CLIAPI.gettoken(password):
+                    innerdone = True
+                innercounter += 1
+                if innercounter > 5:
+                    print("Thats alot of password failures")
+                    sys.exit()
+        outercounter += 1
+        if outercounter > 3:
+            print("outercounter greater than")
+            sys.exit()
+    print('######## performing add')
+    CLIAPI.perform_add()
