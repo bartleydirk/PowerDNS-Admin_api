@@ -138,7 +138,6 @@ class Keypair(object):
         """No keys, so lets create them."""
         if self.sever_pair_onclient or self.client_pair_onserver:
             self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
-            # pprint(asdlfkjasdlkfjlsdkfjlasdkfjsdlkfjl)
         # generate the key pair and write to config file
         random_generator = Random.new().read
         self.uuid = str(uuid.uuid4())
@@ -259,15 +258,3 @@ class Keypair(object):
         if self.showlog:
             show = "Keypair   -> keyname %s -> %s" % (self.keypairname, message)
             print(show)
-
-
-# print dir(RSA)
-# iv = Random.get_random_bytes(8)
-# des1 = DES.new('01234567', DES.MODE_CFB, iv)
-# des2 = DES.new('01234567', DES.MODE_CFB, iv)
-# text = 'abcdefghijklmnop'
-# print 'text is "%s"' % text
-# cipher_text = des1.encrypt(text)
-# print cipher_text
-# decrypted = des2.decrypt(cipher_text)
-# print decrypted
