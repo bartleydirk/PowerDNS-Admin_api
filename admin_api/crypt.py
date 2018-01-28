@@ -4,6 +4,7 @@
 import os
 import base64
 import uuid
+from datetime import datetime, timedelta
 # from pprint import pprint
 
 # pylint: disable=E0401
@@ -14,6 +15,8 @@ from Crypto import Random
 from admin_api import ApiParser
 
 # pylint: disable=E0001
+
+TMEFMT = "%Y %m %d %H:%M:%S"
 
 
 def limitlines(inval):
@@ -47,7 +50,10 @@ class Keypair(object):
         self.uuid = uuid_
         self.isclient = isclient
         self.userpair = False
-        self.logfile = '/home/dbartley/projects/PowerDNS-Admin_api/afile.log'
+        if self.isclient:
+            self.logfile = '/home/dbartley/projects/PowerDNS-Admin_api/afile.log'
+        else:
+            self.logfile = '/home/dbartley/projects/PowerDNS-Admin/afile.log'
 
         if not username:
             self.keypairname = 'server_keys'
@@ -111,8 +117,7 @@ class Keypair(object):
         self.log('__rsaobjects_fromkeystrings importing public key :\n%s' % (limitlines(self.public_key_string)))
         self.public_key_object = RSA.importKey(self.public_key_string)
         if self.priv_key_string:
-            if self.isclient:
-                self.log('__rsaobjects_fromkeystrings should never get here')
+            self.__privateonwronghost()
             self.priv_key_object = RSA.importKey(self.priv_key_string)
 
     def __getkeysfromconfig(self):
@@ -124,8 +129,22 @@ class Keypair(object):
         self.uuid = self.config.safe_get(self.keypairname, 'uuid')
         self.log("__getkeysfromconfig public_key_string %s" % (bool(self.public_key_string)))
         self.log("__getkeysfromconfig priv_key_string %s" % (bool(self.priv_key_string)))
+        # datetime.strptime(, TMEFMT)
         if self.public_key_string:
             self.__rsaobjects_fromkeystrings()
+        if self.client_pair_onserver and self.tokentime:
+            expiretime = datetime.strptime(self.tokentime, TMEFMT)
+            self.log('__getkeysfromconfig -> expire check %s' % (expiretime))
+            self.log('__getkeysfromconfig -> expire check %s' % (expiretime.strftime(TMEFMT)))
+            elapse = datetime.now() - expiretime
+            self.log('__getkeysfromconfig -> expire elapse %s' % (elapse))
+            if elapse > timedelta(0, 600):
+                self.log('__getkeysfromconfig -> token expired')
+                self.config.remove_option(self.keypairname, 'token')
+                self.config.remove_option(self.keypairname, 'tokentime')
+                self.__writeconfig()
+            else:
+                self.log('__getkeysfromconfig -> token good')
 
     @property
     def exists(self):
@@ -135,11 +154,16 @@ class Keypair(object):
             retval = True
         return retval
 
-    def __genkeypair(self):
-        """No keys, so lets create them."""
+    def __privateonwronghost(self):
+        """Private keys should not be on the wrong host."""
         if self.sever_pair_onclient or self.client_pair_onserver:
             self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
+            raise Exception('should never get here sever_pair_onclient or client_pair_onserver')
+
+    def __genkeypair(self):
+        """No keys, so lets create them."""
         # generate the key pair and write to config file
+        self.__privateonwronghost()
         random_generator = Random.new().read
         self.uuid = str(uuid.uuid4())
         self.priv_key_object = RSA.generate(2048, random_generator)
@@ -221,6 +245,7 @@ class Keypair(object):
             self.config.add_section(self.keypairname)
         if token_:
             self.config.set(self.keypairname, 'token', token_)
+            self.config.set(self.keypairname, 'tokentime', datetime.now().strftime(TMEFMT))
 
         if self.public_key_string:
             self.config.set(self.keypairname, 'public', self.public_key_string)
@@ -235,6 +260,13 @@ class Keypair(object):
         """Get a token for the client."""
         token_ = self.config.safe_get(self.keypairname, 'token')
         self.log('token property %s' % (token_))
+        return token_
+
+    @property
+    def tokentime(self):
+        """Get a token for the client."""
+        token_ = self.config.safe_get(self.keypairname, 'tokentime')
+        self.log('token expire time %s' % (token_))
         return token_
 
     def gentoken(self):
