@@ -88,7 +88,7 @@ class Clientapi(object):
         retval = False
         if self.serverkeypair.token:
             encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
-            headers['X-API-Key'] = self.serverkeypair.encrypt(self.serverkeypair.token)
+            headers['X-API-Key'] = encryptedtoken
             headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
             self.log(headers)
 
@@ -135,7 +135,6 @@ class Clientapi(object):
         if name and ipaddr:
             headers = self.baseheaders(pubkey=False)
 
-            
             if self.serverkeypair.token:
                 encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
                 headers['X-API-Key'] = encryptedtoken

@@ -4,7 +4,6 @@
 import os
 import base64
 import uuid
-import json
 from datetime import datetime, timedelta
 from pprint import pformat
 
@@ -41,7 +40,6 @@ class Keypair(object):
     def __init__(self, cnfgfile=None, username=None, pubkeystring=None, uuid_=None, checkexists=False, showlog=False,
                  isclient=False):
         """Key Pair property initialize."""
-        self.md5 = MD5.new()
         self.debuggenkey = False
         self.priv_key_string = None
         self.priv_key_object = None
@@ -222,32 +220,35 @@ class Keypair(object):
     def sign(self, tosign_in):
         """Sign a string."""
         # tosign_in = 'tosign_inasdfasdfasdfasdfasdf'
-        self.md5.update(tosign_in)
-        tosign_md5 = self.md5.digest()
-        maxsize = self.priv_key_object.size()
-        self.log('sign -> maxsize %s' % maxsize, level=6)
-        self.log('sign -> tosign_md5 %s' % tosign_md5, level=6)
-        random_generator = Random.new().read
-        binary_signature = json.dumps(self.priv_key_object.sign(tosign_md5, random_generator))
-        self.log('sign -> binary_signature pformat \n%s' % pformat(binary_signature), level=6)
-        # self.log('sign -> binary_signature type \n%s' % type(binary_signature), level=6)
-        encoded_signature = base64.b64encode(binary_signature)
-        self.log('sign -> returning signature %s' % encoded_signature, level=6)
-        return encoded_signature
+        self.log('sign -> tosign_in "%s"' % tosign_in, level=6)
+        # the incoming string might be to long, lets sign the md5sum
+        md5 = MD5.new()
+        md5.update(tosign_in)
+        tosign_md5 = md5.digest()
+        self.log('sign -> tosign_md5 pformat %s' % pformat(tosign_md5), level=6)
+        # need a signature object, which is a tuple of length zero, that is a long
+        signature_object = self.priv_key_object.sign(tosign_md5, Random.new().read)
+        self.log('sign -> signature_object pformat \n%s' % pformat(signature_object[0]), level=6)
+        # for passing over http, stringify the long
+        return str(signature_object[0])
 
     def verify(self, toverify_in, encoded_signature_in):
-        """Sign a string."""
-        self.md5.update(toverify_in)
-        toverify_md5 = self.md5.digest()
+        """
+        Verify the string with the signature
+            toverify_in: is the string
+            encoded_signature_in: is the long, which was converted to a string
+        """
+        self.log('verify -> toverify_in\n"%s"' % toverify_in, level=6)
+        md5 = MD5.new()
+        md5.update(toverify_in)
+        toverify_md5 = md5.digest()
+        self.log('verify -> toverify_md5 pformat\n"%s"' % pformat(toverify_md5, indent=4), level=6)
+        self.log('verify -> encoded_signature_in "%s"' % (encoded_signature_in), level=6)
+        # pylint: disable=E0602
+        signature_object = (long(encoded_signature_in), )
 
-        # the binary value must be a tuple of length 1
-        self.log('verify -> encoded_signature_in pformat \n%s' % pformat(encoded_signature_in), level=6)
-        binary_signature_in = (base64.b64decode(encoded_signature_in))
-        self.log('verify -> binary_signature_in %s' % binary_signature_in, level=6)
-        signature_in_loaded = json.loads(binary_signature_in)
-        self.log('verify -> signature_in_loaded pformat \n%s' % pformat(signature_in_loaded), level=6)
-        result = self.public_key_object.verify(toverify_md5, signature_in_loaded)
-        self.log('verify -> returning verify string with signature returns "%s"' % result)
+        result = self.public_key_object.verify(toverify_md5, signature_object)
+        self.log('verify -> verify string with signature returns "%s"' % result, level=6)
         return result
 
     def get_pub_key(self):
