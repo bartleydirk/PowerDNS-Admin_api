@@ -9,7 +9,7 @@ CLIAPI = Clientapi()
 print('######## performing add')
 # pylint: disable=C0103
 dictof = {}
-dictof['fredd.spotx.tv.'] = '192.168.2.95'
+dictof['fredd.spotx.tv.'] = '192.168.2.96'
 for name in dictof:
     ipaddr = dictof[name]
     CLIAPI.perform_add(name=name, ipaddr=ipaddr)

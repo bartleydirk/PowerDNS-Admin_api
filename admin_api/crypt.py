@@ -37,7 +37,7 @@ class Keypair(object):
                  isclient=False):
         """Key Pair property initialize."""
         self.debuggenkey = False
-        self.priv_key_sting = None
+        self.priv_key_string = None
         self.priv_key_object = None
         self.username = username
         self.showlog = showlog
@@ -47,6 +47,7 @@ class Keypair(object):
         self.uuid = uuid_
         self.isclient = isclient
         self.userpair = False
+        self.logfile = '/home/dbartley/projects/PowerDNS-Admin_api/afile.log'
 
         if not username:
             self.keypairname = 'server_keys'
@@ -101,7 +102,7 @@ class Keypair(object):
         retval = 'Keypair __repr__ :\n'
         retval += '    keypairname is "%s"\n' % (self.keypairname)
         retval += '    public_key_string is "%s"\n' % (limitlines(self.public_key_string))
-        retval += '    priv_key_sting is "%s"\n' % (limitlines(self.priv_key_sting))
+        retval += '    priv_key_string is "%s"\n' % (limitlines(self.priv_key_string))
         return retval
 
     def __rsaobjects_fromkeystrings(self):
@@ -109,20 +110,20 @@ class Keypair(object):
         # self.showlog = True
         self.log('__rsaobjects_fromkeystrings importing public key :\n%s' % (limitlines(self.public_key_string)))
         self.public_key_object = RSA.importKey(self.public_key_string)
-        if self.priv_key_sting:
+        if self.priv_key_string:
             if self.isclient:
                 self.log('__rsaobjects_fromkeystrings should never get here')
-            self.priv_key_object = RSA.importKey(self.priv_key_sting)
+            self.priv_key_object = RSA.importKey(self.priv_key_string)
 
     def __getkeysfromconfig(self):
         """Import the keys from the config file."""
         # get the public key string from the config file
         self.log("__getkeysfromconfig get the public and private key from config file")
         self.public_key_string = self.config.safe_get(self.keypairname, 'public')
-        self.priv_key_sting = self.config.safe_get(self.keypairname, 'private')
+        self.priv_key_string = self.config.safe_get(self.keypairname, 'private')
         self.uuid = self.config.safe_get(self.keypairname, 'uuid')
         self.log("__getkeysfromconfig public_key_string %s" % (bool(self.public_key_string)))
-        self.log("__getkeysfromconfig priv_key_sting %s" % (bool(self.priv_key_sting)))
+        self.log("__getkeysfromconfig priv_key_string %s" % (bool(self.priv_key_string)))
         if self.public_key_string:
             self.__rsaobjects_fromkeystrings()
 
@@ -154,8 +155,8 @@ class Keypair(object):
             self.config.add_section(self.keypairname)
         self.log("__genkeypair Setting Public and private keys in")
         self.config.set(self.keypairname, 'public', self.public_key_string)
-        self.priv_key_sting = self.priv_key_object.exportKey('PEM')
-        self.config.set(self.keypairname, 'private', self.priv_key_sting)
+        self.priv_key_string = self.priv_key_object.exportKey('PEM')
+        self.config.set(self.keypairname, 'private', self.priv_key_string)
         self.config.set(self.keypairname, 'uuid', self.uuid)
         self.__writeconfig()
 
@@ -179,7 +180,7 @@ class Keypair(object):
 
     def decrypt(self, enc_data):
         """Decrypt a sting."""
-        if self.priv_key_sting:
+        if self.priv_key_string:
             # self.showlog = True
             self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
             enc_data = (base64.b64decode(enc_data))
@@ -255,6 +256,9 @@ class Keypair(object):
 
     def log(self, message):
         """Logg, control output here."""
+        log_fv = open(self.logfile, 'a')
+        show = "Keypair   -> keyname %s -> %s\n" % (self.keypairname, message)
+        log_fv.write(show)
+        log_fv.close()
         if self.showlog:
-            show = "Keypair   -> keyname %s -> %s" % (self.keypairname, message)
             print(show)

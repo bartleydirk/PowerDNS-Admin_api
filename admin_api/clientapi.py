@@ -3,10 +3,11 @@
 # pylint: disable=E0401
 import base64
 import sys
+import os
 from getpass import getpass
-from pprint import pprint
+from pprint import pformat
 
-from admin_api import fetch_json, build_rrset
+from admin_api import fetch_json
 from admin_api.crypt import Keypair, limitlines
 
 
@@ -17,7 +18,15 @@ class Clientapi(object):
         """Initialze the Clientapi class."""
         self.baseurl = 'http://localhost:9393'
         self.username = 'dbartley'
-        self.showlog = False
+        self.showlog = True
+
+        oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        self.logfile = '%s/afile.log' % oneup
+        self.log("log file is %s" % (self.logfile))
+
+        log_fv = open(self.logfile, 'w')
+        log_fv.write('')
+        log_fv.close()
 
         self.clientkeypair = Keypair(username='mykeys', showlog=False, isclient=True)
         pubkey, uuid = self.clientkeypair.get_pub_key()
@@ -28,7 +37,7 @@ class Clientapi(object):
         self.serverkeypair = Keypair(checkexists=True, showlog=False, isclient=True)
         self.log('self.serverkeypair on client exists is %s' % (self.serverkeypair.exists))
 
-        self.confirm_exchange()
+        self.confirm_key_exchange()
         if self.serverkeypair.exists:
             self.confirm_token()
 
@@ -54,8 +63,7 @@ class Clientapi(object):
 
         url = '%s/checkkeys' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
-        self.log("Clientapi exchangekeys jdata returned : ")
-        pprint(jdata)
+        self.log("Clientapi exchangekeys jdata returned : %s" % (jdata))
 
         if 'status' in jdata:
             status = jdata['status']
@@ -78,21 +86,24 @@ class Clientapi(object):
         """Check the token on server."""
         headers = self.baseheaders(pubkey=False)
         self.log("Clientapi checktoken encrypting token %s" % (self.serverkeypair.token))
-        encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
-        retval = False
         if self.serverkeypair.token:
+            encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+            retval = False
+
             headers['X-API-Key'] = encryptedtoken
             self.log(headers)
 
             url = '%s/token_check' % (self.baseurl)
             jdata = fetch_json(url, headers=headers, data=None, method='POST')
-            pprint(jdata)
+            self.log(pformat(jdata, indent=4))
 
             if 'status' in jdata:
                 status = jdata['status']
                 self.log('status is %s' % (status))
                 if status == 'Token Success':
                     retval = True
+        else:
+            retval = False
         self.log("checktoken returning %s" % retval)
         return retval
 
@@ -102,12 +113,13 @@ class Clientapi(object):
         self.log("Clientapi gettoken sending headers, pprint follows")
         encryptedpassword = self.serverkeypair.encrypt(passwd)
         headers['X-API-Password'] = encryptedpassword
-        pprint(headers)
+        self.log(pformat(headers, indent=4))
 
         url = '%s/token_request' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
-        pprint(jdata)
+        self.log(pformat(jdata, indent=4))
 
+        retval = False
         if 'status' in jdata:
             status = jdata['status']
             self.log('status is %s' % (status))
@@ -118,12 +130,12 @@ class Clientapi(object):
                 token_ = self.clientkeypair.decrypt(encryptedtoken)
                 self.log('gettoken -> token is %s' % (token_))
                 self.serverkeypair.saveserveronclient(token_=token_)
+                retval = True
+        return retval
 
-    def perform_add(self, name=None, ipaddr=None):
+    def perform_add(self, name=None, ipaddr=None, ttl=None):
         """Perform add, this is the whole purpos, the rest is to authenticate the api script."""
         if name and ipaddr:
-            data = []
-            data.append(build_rrset(name=name, ipaddr=ipaddr))
             headers = self.baseheaders(pubkey=False)
 
             encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
@@ -131,21 +143,29 @@ class Clientapi(object):
                 headers['X-API-Key'] = encryptedtoken
 
             self.log("sending headers, pprint follows", level=6)
-            pprint(headers)
+            self.log(pformat(headers, indent=4), level=6)
 
-            url = '%s/api' % (self.baseurl)
+            data = {'name': name,
+                    'ipaddr': ipaddr}
+            if ttl:
+                data['ttl'] = ttl
+
+            url = '%s/addhost' % (self.baseurl)
             jdata = fetch_json(url, headers=headers, data=data, method='POST')
+
             self.log("jdata from server, pprint follows", level=6)
-            pprint(jdata)
+            self.log(pformat(jdata, indent=4), level=10)
         else:
             self.log("Need a name and an ip address", level=6)
 
     def log(self, message, level=5):
         """Logg, control output here."""
-        if self.showlog:
-            if level > 5:
-                show = "Clientapi -> %s" % (message)
-                print(show)
+        show = "Clientapi -> %s" % (message)
+        log_fv = open(self.logfile, 'a')
+        log_fv.write('%s\n' % show)
+        log_fv.close()
+        if self.showlog and level > 5:
+            print(show)
 
     def confirm_token(self):
         """Use the tools to confirm the token is ready to use."""
@@ -155,7 +175,7 @@ class Clientapi(object):
         outercounter = 0
         outerdone = False
         while not outerdone:
-            self.log("Looping till the token is valid : ")
+            self.log("Looping till the token is valid : ", level=10)
             if self.checktoken():
                 outerdone = True
             else:
@@ -163,20 +183,20 @@ class Clientapi(object):
                 innercounter = 0
                 innerdone = False
                 while not innerdone:
-                    self.log("You want a token, the server needs your password : ")
+                    self.log("You want a token, the server needs your password : ", level=10)
                     password = getpass()
                     if self.gettoken(password):
                         innerdone = True
                     innercounter += 1
                     if innercounter > 5:
-                        self.log("Thats alot of password failures")
+                        self.log("Thats alot of password failures", level=10)
                         sys.exit()
             outercounter += 1
             if outercounter > 3:
-                self.log("outercounter greater than")
+                self.log("outercounter greater than", level=10)
                 sys.exit()
 
-    def confirm_exchange(self):
+    def confirm_key_exchange(self):
         """Use other methods in loop to confirm the key exchange occurs correctly."""
         counter = 0
         done = False
