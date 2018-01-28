@@ -4,13 +4,15 @@
 import os
 import base64
 import uuid
+import json
 from datetime import datetime, timedelta
-# from pprint import pprint
+from pprint import pformat
 
 # pylint: disable=E0401
-from Crypto.PublicKey import RSA
-from Crypto import Random
 
+from Crypto import Random
+from Crypto.Hash import MD5
+from Crypto.PublicKey import RSA
 
 from admin_api import ApiParser
 
@@ -39,6 +41,7 @@ class Keypair(object):
     def __init__(self, cnfgfile=None, username=None, pubkeystring=None, uuid_=None, checkexists=False, showlog=False,
                  isclient=False):
         """Key Pair property initialize."""
+        self.md5 = MD5.new()
         self.debuggenkey = False
         self.priv_key_string = None
         self.priv_key_object = None
@@ -131,6 +134,7 @@ class Keypair(object):
         self.log("__getkeysfromconfig priv_key_string %s" % (bool(self.priv_key_string)))
         # datetime.strptime(, TMEFMT)
         if self.public_key_string:
+            # create the python object from the string
             self.__rsaobjects_fromkeystrings()
         if self.client_pair_onserver and self.tokentime:
             expiretime = datetime.strptime(self.tokentime, TMEFMT)
@@ -197,7 +201,7 @@ class Keypair(object):
         self.log("wrote config file %s" % (self.cnfgfile))
 
     def encrypt(self, string_in):
-        """Encrypt a string."""
+        """Encrypt a string, and encode it in base64."""
         enc_data = self.public_key_object.encrypt(string_in, 32)[0]
         enc_data = base64.b64encode(enc_data)
         return enc_data
@@ -207,12 +211,44 @@ class Keypair(object):
         if self.priv_key_string:
             # self.showlog = True
             self.log("decrypt passed value, should be base64 encoded %s" % enc_data)
+            # the data is a tuple of length one
             enc_data = (base64.b64decode(enc_data))
             net_decrypted = self.priv_key_object.decrypt(enc_data)
             return net_decrypted
         else:
             self.log('No private key, most likely the wrong keypair being used')
         return None
+
+    def sign(self, tosign_in):
+        """Sign a string."""
+        # tosign_in = 'tosign_inasdfasdfasdfasdfasdf'
+        self.md5.update(tosign_in)
+        tosign_md5 = self.md5.digest()
+        maxsize = self.priv_key_object.size()
+        self.log('sign -> maxsize %s' % maxsize, level=6)
+        self.log('sign -> tosign_md5 %s' % tosign_md5, level=6)
+        random_generator = Random.new().read
+        binary_signature = json.dumps(self.priv_key_object.sign(tosign_md5, random_generator))
+        self.log('sign -> binary_signature pformat \n%s' % pformat(binary_signature), level=6)
+        # self.log('sign -> binary_signature type \n%s' % type(binary_signature), level=6)
+        encoded_signature = base64.b64encode(binary_signature)
+        self.log('sign -> returning signature %s' % encoded_signature, level=6)
+        return encoded_signature
+
+    def verify(self, toverify_in, encoded_signature_in):
+        """Sign a string."""
+        self.md5.update(toverify_in)
+        toverify_md5 = self.md5.digest()
+
+        # the binary value must be a tuple of length 1
+        self.log('verify -> encoded_signature_in pformat \n%s' % pformat(encoded_signature_in), level=6)
+        binary_signature_in = (base64.b64decode(encoded_signature_in))
+        self.log('verify -> binary_signature_in %s' % binary_signature_in, level=6)
+        signature_in_loaded = json.loads(binary_signature_in)
+        self.log('verify -> signature_in_loaded pformat \n%s' % pformat(signature_in_loaded), level=6)
+        result = self.public_key_object.verify(toverify_md5, signature_in_loaded)
+        self.log('verify -> returning verify string with signature returns "%s"' % result)
+        return result
 
     def get_pub_key(self):
         """Return The public key."""
@@ -286,11 +322,11 @@ class Keypair(object):
         """Classmethod to generate some random strings."""
         return base64.b64encode(Random.get_random_bytes(bytecount))
 
-    def log(self, message):
+    def log(self, message, level=5):
         """Logg, control output here."""
         log_fv = open(self.logfile, 'a')
         show = "Keypair   -> keyname %s -> %s\n" % (self.keypairname, message)
         log_fv.write(show)
         log_fv.close()
-        if self.showlog:
+        if self.showlog and level > 5:
             print(show)

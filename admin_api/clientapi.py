@@ -22,19 +22,18 @@ class Clientapi(object):
 
         oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.logfile = '%s/afile.log' % oneup
-        self.log("log file is %s" % (self.logfile))
-
         log_fv = open(self.logfile, 'w')
         log_fv.write('')
         log_fv.close()
+        self.log("Clientapi log file is %s" % (self.logfile), level=6)
 
-        self.clientkeypair = Keypair(username='mykeys', showlog=False, isclient=True)
+        self.clientkeypair = Keypair(username='mykeys', showlog=True, isclient=True)
         pubkey, uuid = self.clientkeypair.get_pub_key()
         # self.log('__init__ pub %s uuid %s' % (limitlines(pubkey), uuid))
         self.pubkey_b64 = base64.b64encode(pubkey)
         self.uuid_client_b64 = base64.b64encode(uuid)
 
-        self.serverkeypair = Keypair(checkexists=True, showlog=False, isclient=True)
+        self.serverkeypair = Keypair(checkexists=True, showlog=True, isclient=True)
         self.log('self.serverkeypair on client exists is %s' % (self.serverkeypair.exists))
 
         self.confirm_key_exchange()
@@ -86,11 +85,11 @@ class Clientapi(object):
         """Check the token on server."""
         headers = self.baseheaders(pubkey=False)
         self.log("Clientapi checktoken encrypting token %s" % (self.serverkeypair.token))
+        retval = False
         if self.serverkeypair.token:
             encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
-            retval = False
-
-            headers['X-API-Key'] = encryptedtoken
+            headers['X-API-Key'] = self.serverkeypair.encrypt(self.serverkeypair.token)
+            headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
             self.log(headers)
 
             url = '%s/token_check' % (self.baseurl)
@@ -102,8 +101,6 @@ class Clientapi(object):
                 self.log('status is %s' % (status))
                 if status == 'Token Success':
                     retval = True
-        else:
-            retval = False
         self.log("checktoken returning %s" % retval)
         return retval
 
@@ -138,9 +135,11 @@ class Clientapi(object):
         if name and ipaddr:
             headers = self.baseheaders(pubkey=False)
 
-            encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+            
             if self.serverkeypair.token:
+                encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
                 headers['X-API-Key'] = encryptedtoken
+                headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
 
             self.log("sending headers, pprint follows", level=6)
             self.log(pformat(headers, indent=4), level=6)
