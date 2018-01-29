@@ -56,9 +56,12 @@ class Clientapi(object):
         spubkey, suuid = self.serverkeypair.get_pub_key()
         self.log('checkkeys server pub %s uuid %s' % (limitlines(spubkey), suuid))
         spubkey_b64 = base64.b64encode(spubkey)
-        suuid_server_b64 = base64.b64encode(suuid)
+        if suuid:
+            suuid_server_b64 = base64.b64encode(suuid)
+            headers['X-API-Serveruuid'] = suuid_server_b64
+        else:
+            headers['X-API-Serveruuid'] = ''
         headers['X-API-Serverpubkey'] = spubkey_b64
-        headers['X-API-Serveruuid'] = suuid_server_b64
 
         url = '%s/checkkeys' % (self.baseurl)
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
@@ -100,9 +103,19 @@ class Clientapi(object):
                 status = jdata['status']
                 self.log('status is %s' % (status))
                 if status == 'Token Success':
+                    if 'encryptedtoken' in jdata:
+                        self.savetoken(jdata['encryptedtoken'])
                     retval = True
         self.log("checktoken returning %s" % retval)
         return retval
+
+    def savetoken(self, encryptedtoken):
+        """Save the Token"""
+        self.log('gettoken -> encryptedtoken is %s' % (encryptedtoken))
+        # self.clientkeypair.showlog = True
+        token_ = self.clientkeypair.decrypt(encryptedtoken)
+        self.log('gettoken -> token is %s' % (token_))
+        self.serverkeypair.saveserveronclient(token_=token_)
 
     def gettoken(self, passwd):
         """get a token from server."""
@@ -121,12 +134,7 @@ class Clientapi(object):
             status = jdata['status']
             self.log('status is %s' % (status))
             if status == 'Password Success':
-                encryptedtoken = jdata['encryptedtoken']
-                self.log('gettoken -> encryptedtoken is %s' % (encryptedtoken))
-                # self.clientkeypair.showlog = True
-                token_ = self.clientkeypair.decrypt(encryptedtoken)
-                self.log('gettoken -> token is %s' % (token_))
-                self.serverkeypair.saveserveronclient(token_=token_)
+                self.savetoken(jdata['encryptedtoken'])
                 retval = True
         return retval
 
