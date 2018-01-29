@@ -220,15 +220,15 @@ class Keypair(object):
     def sign(self, tosign_in):
         """Sign a string."""
         # tosign_in = 'tosign_inasdfasdfasdfasdfasdf'
-        self.log('sign -> tosign_in "%s"' % tosign_in, level=6)
+        self.log('sign -> tosign_in "%s"' % tosign_in, level=5)
         # the incoming string might be to long, lets sign the md5sum
         md5 = MD5.new()
         md5.update(tosign_in)
         tosign_md5 = md5.digest()
-        self.log('sign -> tosign_md5 pformat %s' % pformat(tosign_md5), level=6)
+        self.log('sign -> tosign_md5 pformat %s' % pformat(tosign_md5), level=5)
         # need a signature object, which is a tuple of length zero, that is a long
         signature_object = self.priv_key_object.sign(tosign_md5, Random.new().read)
-        self.log('sign -> signature_object pformat \n%s' % pformat(signature_object[0]), level=6)
+        self.log('sign -> signature_object pformat \n%s' % pformat(signature_object[0]), level=5)
         # for passing over http, stringify the long
         return str(signature_object[0])
 
@@ -238,17 +238,17 @@ class Keypair(object):
             toverify_in: is the string
             encoded_signature_in: is the long, which was converted to a string
         """
-        self.log('verify -> toverify_in\n"%s"' % toverify_in, level=6)
+        self.log('verify -> toverify_in\n"%s"' % toverify_in, level=5)
         md5 = MD5.new()
         md5.update(toverify_in)
         toverify_md5 = md5.digest()
-        self.log('verify -> toverify_md5 pformat\n"%s"' % pformat(toverify_md5, indent=4), level=6)
-        self.log('verify -> encoded_signature_in "%s"' % (encoded_signature_in), level=6)
+        self.log('verify -> toverify_md5 pformat\n"%s"' % pformat(toverify_md5, indent=4), level=5)
+        self.log('verify -> encoded_signature_in "%s"' % (encoded_signature_in), level=5)
         # pylint: disable=E0602
         signature_object = (long(encoded_signature_in), )
 
         result = self.public_key_object.verify(toverify_md5, signature_object)
-        self.log('verify -> verify string with signature returns "%s"' % result, level=6)
+        self.log('verify -> verify string with signature returns "%s"' % result, level=5)
         return result
 
     def get_pub_key(self):

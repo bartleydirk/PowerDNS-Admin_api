@@ -25,7 +25,7 @@ class Clientapi(object):
         log_fv = open(self.logfile, 'w')
         log_fv.write('')
         log_fv.close()
-        self.log("Clientapi log file is %s" % (self.logfile), level=6)
+        self.log("Clientapi log file is %s" % (self.logfile), level=5)
 
         self.clientkeypair = Keypair(username='mykeys', showlog=True, isclient=True)
         pubkey, uuid = self.clientkeypair.get_pub_key()
@@ -140,8 +140,8 @@ class Clientapi(object):
                 headers['X-API-Key'] = encryptedtoken
                 headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
 
-            self.log("sending headers, pprint follows", level=6)
-            self.log(pformat(headers, indent=4), level=6)
+            self.log("sending headers, pprint follows", level=5)
+            self.log(pformat(headers, indent=4), level=5)
 
             data = {'name': name,
                     'ipaddr': ipaddr}
@@ -151,10 +151,10 @@ class Clientapi(object):
             url = '%s/addhost' % (self.baseurl)
             jdata = fetch_json(url, headers=headers, data=data, method='POST')
 
-            self.log("jdata from server, pprint follows", level=6)
+            self.log("jdata from server, pprint follows", level=5)
             self.log(pformat(jdata, indent=4), level=10)
         else:
-            self.log("Need a name and an ip address", level=6)
+            self.log("Need a name and an ip address", level=5)
 
     def log(self, message, level=5):
         """Logg, control output here."""
