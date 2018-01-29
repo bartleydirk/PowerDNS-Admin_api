@@ -7,14 +7,14 @@ import hashlib
 from ConfigParser import RawConfigParser
 
 
+# from app import app
+# from distutils.version import StrictVersion
 
-#from app import app
-#from distutils.version import StrictVersion
-
-#if 'TIMEOUT' in app.config.keys():
+# if 'TIMEOUT' in app.config.keys():
 #    TIMEOUT = app.config['TIMEOUT']
-#else:
+# else:
 TIMEOUT = 10
+
 
 def auth_from_url(url):
     auth = None
@@ -63,19 +63,19 @@ def fetch_remote(remote_url, method='GET', data=None, accept=None, params=None, 
         auth=auth_from_url(remote_url),
         timeout=timeout,
         data=data,
-        params=params
-        )
+        params=params, )
     try:
         if r.status_code not in (200, 400, 422):
             r.raise_for_status()
-    except Exception as e:
-        raise RuntimeError("While fetching " + remote_url + ": " + str(e)), None, sys.exc_info()[2]
+    except Exception as err:
+        raise RuntimeError("While fetching " + remote_url + ": " + str(err)), None, sys.exc_info()[2]
 
     return r
 
 
 def fetch_json(remote_url, method='GET', data=None, params=None, headers=None):
-    r = fetch_remote(remote_url, method=method, data=data, params=params, headers=headers, accept='application/json; q=1')
+    r = fetch_remote(remote_url, method=method, data=data, params=params, headers=headers,
+                     accept='application/json; q=1')
 
     if method == "DELETE":
         return True
@@ -104,7 +104,7 @@ def display_record_name(data):
     if record_name == domain_name:
         return '@'
     else:
-        return record_name.replace('.'+domain_name, '')
+        return record_name.replace('.' + domain_name, '')
 
 
 class ApiParser(RawConfigParser):

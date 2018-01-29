@@ -8,6 +8,7 @@ from getpass import getpass
 from pprint import pformat
 
 from admin_api import fetch_json
+from admin_api import ApiParser
 from admin_api.crypt import Keypair, limitlines
 
 
@@ -17,7 +18,7 @@ class Clientapi(object):
     def __init__(self):
         """Initialze the Clientapi class."""
         self.baseurl = 'http://localhost:9393'
-        self.username = 'dbartley'
+        
         self.showlog = True
 
         oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -26,6 +27,13 @@ class Clientapi(object):
         log_fv.write('')
         log_fv.close()
         self.log("Clientapi log file is %s" % (self.logfile), level=5)
+
+        configfile = '%s/api.cfg' % (oneup)
+        config = ApiParser()
+        config.read(configfile)
+        self.username = config.safe_get('userinfo', 'username')
+        #self.baseurl = 'http://localhost:9393'
+        self.baseurl = config.safe_get('serverinfo', 'baseurl')
 
         self.clientkeypair = Keypair(username='mykeys', showlog=True, isclient=True)
         pubkey, uuid = self.clientkeypair.get_pub_key()
