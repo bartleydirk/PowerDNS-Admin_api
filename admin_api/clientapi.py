@@ -172,6 +172,29 @@ class Clientapi(object):
         else:
             self.log("Need a name and an ip address", level=5)
 
+    def fixrev(self, hostname=None, revname=None):
+        """Perform add, this is the whole purpos, the rest is to authenticate the api script."""
+        if hostname and revname:
+            headers = self.baseheaders(pubkey=False)
+
+            if self.serverkeypair.token:
+                encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+                headers['X-API-Key'] = encryptedtoken
+                headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
+
+            self.log("sending headers, pprint follows", level=5)
+            self.log(pformat(headers, indent=4), level=5)
+
+            data = {'hostname': hostname,
+                    'revname': revname}
+            url = '%s/fixrev' % (self.baseurl)
+            jdata = fetch_json(url, headers=headers, data=data, method='POST')
+
+            self.log("jdata from server, pprint follows", level=5)
+            self.log(pformat(jdata, indent=4), level=10)
+        else:
+            self.log("Need a hostname and an revname", level=5)
+
     def log(self, message, level=5):
         """Logg, control output here."""
         show = "Clientapi -> %s" % (message)
