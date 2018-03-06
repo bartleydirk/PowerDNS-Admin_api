@@ -146,9 +146,9 @@ class Clientapi(object):
                 retval = True
         return retval
 
-    def perform_add(self, name=None, ipaddr=None, ttl=None):
+    def perform_add(self, name=None, content=None, ttl=None, rectype=None):
         """Perform add, this is the whole purpos, the rest is to authenticate the api script."""
-        if name and ipaddr:
+        if name and content:
             headers = self.baseheaders(pubkey=False)
 
             if self.serverkeypair.token:
@@ -160,11 +160,38 @@ class Clientapi(object):
             self.log(pformat(headers, indent=4), level=5)
 
             data = {'name': name,
-                    'ipaddr': ipaddr}
+                    'content': content}
             if ttl:
                 data['ttl'] = ttl
+            if rectype:
+                data['rectype'] = rectype
 
             url = '%s/addhost' % (self.baseurl)
+            jdata = fetch_json(url, headers=headers, data=data, method='POST')
+
+            self.log("jdata from server, pprint follows", level=5)
+            self.log(pformat(jdata, indent=4), level=10)
+        else:
+            self.log("Need a name and an ip address", level=5)
+
+    def perform_delete(self, name=None, rectype=None):
+        """Perform add, this is the whole purpos, the rest is to authenticate the api script."""
+        if name:
+            headers = self.baseheaders(pubkey=False)
+
+            if self.serverkeypair.token:
+                encryptedtoken = self.serverkeypair.encrypt(self.serverkeypair.token)
+                headers['X-API-Key'] = encryptedtoken
+                headers['X-API-Signature'] = self.clientkeypair.sign(encryptedtoken)
+
+            self.log("sending headers, pprint follows", level=5)
+            self.log(pformat(headers, indent=4), level=5)
+
+            data = {'name': name}
+            if rectype:
+                data['rectype'] = rectype
+
+            url = '%s/delrec' % (self.baseurl)
             jdata = fetch_json(url, headers=headers, data=data, method='POST')
 
             self.log("jdata from server, pprint follows", level=5)
