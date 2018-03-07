@@ -15,18 +15,23 @@ DOAPI = True
 if DOAPI:
     CLIAPI = Clientapi()
 re_slotspot = re.compile(r'slot.*\.spotx\.')
+re_addrarpa = re.compile(r'\.in-addr\.arpa')
+re_ip6arpa = re.compile(r'ip6.arpa')
+re_ipdash = re.compile(r'^ip-')
 
 
 Base = declarative_base()
-#print(dir(create_engine))
-#sys.exit()
-
-#select domains.name, aaa.cnt from domains join (select domain_id, count(*) as cnt from records group by domain_id) aaa on aaa.domain_id = domains.id order by aaa.cnt;
 
 privatelist = []
 privatelist.append(ipaddress.ip_network(u'192.168.0.0/16'))
 privatelist.append(ipaddress.ip_network(u'172.16.0.0/12'))
 privatelist.append(ipaddress.ip_network(u'10.0.0.0/8'))
+
+engine = create_engine('mysql://pdns_user:ie0weeR1_jae3sai@dnstest2/pdns')
+Session = sessionmaker(bind=engine)
+# create a Session
+session = Session()
+checkdomain = 'pop'
 
 
 def intsafe(inval):
@@ -40,6 +45,7 @@ def intsafe(inval):
 
 
 def isprivate(addr):
+    """Is an ip address a private ip address."""
     retval = False
     addr = ipaddress.ip_address(unicode(addr))
     counter = 0
@@ -49,10 +55,26 @@ def isprivate(addr):
             break
     return retval
 
+
 def addr_to_arpa(addr):
+    """Take address ipv4, return in-addr.arpa."""
     test = addr.split('.')
     if len(test) == 4:
         return "%s.%s.%s.%s.in-addr.arpa" % (test[3], test[2], test[1], test[0])
+
+
+def apra_to_addr(arpa):
+    """Take the arpa return addr."""
+    if re_ip6arpa.search(arpa):
+        print 'returning none %s' % (arpa)
+        return None
+    arpaless = re_addrarpa.sub('', arpa)
+    #print arpaless
+    test = arpaless.split('.')
+    if len(test) == 4:
+        return "%s.%s.%s.%s" % (test[3], test[2], test[1], test[0])
+    #else:
+    #    print "len test is %s %s" % (len(test), test)
 
 
 class Domains(Base):
@@ -90,12 +112,6 @@ class Records(Base):
         return '%s %s %s %s' % (self.id, self.type, self.name, self.content)
 
 
-
-engine = create_engine('mysql://pdns_user:ie0weeR1_jae3sai@dnstest2/pdns')
-Session = sessionmaker(bind=engine)
-# create a Session
-session = Session()
-
 def content_is_qry(chkdom, content):
     # looking for records that should be cnames
     sqry_fw = session.query(Domains.id)\
@@ -108,6 +124,7 @@ def content_is_qry(chkdom, content):
                      .order_by(Records.name)
     return qry_ret
 
+
 def build_arecdict(chkdom='pop'):
     sqry_fw = session.query(Domains.id)\
                      .filter(Domains.name == chkdom)
@@ -117,205 +134,195 @@ def build_arecdict(chkdom='pop'):
                  .filter(Records.domain_id == sqry_fw)
                  #.filter(not_(Records.name.in_(multqry_fw)))
 
-    forward_dct = {}
-    reverse_dct = {}
+    ipkey_forw_dct = {}
+    namekey_forw_dct = {}
     counter = 0
     for rec in qry:
-        if rec.content not in forward_dct:
-            forward_dct[rec.content] = [rec.name]
+        if rec.content not in ipkey_forw_dct:
+            ipkey_forw_dct[rec.content] = [rec.name]
         else:
-            forward_dct[rec.content].append(rec.name)
-        if rec.name not in reverse_dct:
-            reverse_dct[rec.name] = [rec.content]
+            ipkey_forw_dct[rec.content].append(rec.name)
+        if rec.name not in namekey_forw_dct:
+            namekey_forw_dct[rec.name] = [rec.content]
         else:
-            reverse_dct[rec.name].append(rec.content)
+            namekey_forw_dct[rec.name].append(rec.content)
 
-    return (forward_dct, reverse_dct)
-
-# print 'Here %s' % ('Woo Hoo')
-
-checkdomain = 'pop'
+    return (ipkey_forw_dct, namekey_forw_dct)
 
 
-# looking for records that should be cnames
-sqry_fw = session.query(Domains.id)\
-                 .filter(Domains.name == checkdomain)
+def build_ptr_dict():
+    qry = session.query(Records)\
+                 .filter(Records.type == 'PTR')\
 
-multsqry_rv = session.query(Records.content, func.count().label('cnt'))\
-                     .filter(Records.type == 'A')\
-                     .filter(Records.domain_id == sqry_fw)\
-                     .group_by(Records.content)\
-                     .subquery('multsqry_rv')
+    ipkey_dct = {}
+    namekey_dct = {}
+    counter = 0
+    for rec in qry:
+        ipaddr = apra_to_addr(rec.name)
+        if ipaddr:
+            if ipaddr not in ipkey_dct:
+                ipkey_dct[ipaddr] = [rec.content]
+            else:
+                ipkey_dct[ipaddr].append(rec.content)
+            if rec.content not in namekey_dct:
+                namekey_dct[rec.content] = [ipaddr]
+            else:
+                namekey_dct[rec.content].append(ipaddr)
+        else:
+            print "arpa conversion issue %s %s" % (rec.name, rec.content)
 
-multqry_rv = session.query(multsqry_rv.c.content)\
-                    .filter(multsqry_rv.c.cnt > 1)
-
-
-sqry_fw = session.query(Domains.id)\
-                 .filter(Domains.name == checkdomain)
-
-multsqry_fw = session.query(Records.name, func.count().label('cnt'))\
-                     .filter(Records.type == 'A')\
-                     .filter(Records.domain_id == sqry_fw)\
-                     .group_by(Records.name)\
-                     .subquery('multsqry_fw')
-
-multqry_fw = session.query(multsqry_fw.c.name)\
-                    .filter(multsqry_fw.c.cnt > 1)
+    return (namekey_dct, ipkey_dct)
 
 
-onebutwrong = {}
-
-
-arec_content, rev_content = build_arecdict()
-
-#pprint(arec_content)
-for addr in arec_content:
-    namelist = arec_content[addr]
-
-    if len(namelist) > 1:
-        print "two A's pointing to same ipaddr %s %s" % (addr, namelist)
-        foundat = -1
-        usethisname = None
-        for (cnter, name_) in enumerate(namelist):
-            if re_slotspot.search(name_):
-                foundat = cnter
-                usethisname = name_
-        options = []
-        for (cnter, name_) in enumerate(namelist):
-            thisbe = ""
-            if foundat == cnter:
-                thisbe = "< -- -- --"
-            print "%s %s %s" % (cnter, name_, thisbe)
-            options.append(cnter)
-        if foundat >= 0:
+def fix_arecs_tocnames():
+    arec_content, rev_content = build_arecdict()
+    print "Attempting fix of a records pointing to same ip by changing to cname %s" % (len(arec_content))
+    for addr in arec_content:
+        namelist = arec_content[addr]
+    
+        if len(namelist) > 1:
+            print "two A's pointing to same ipaddr %s %s" % (addr, namelist)
+            foundat = -1
+            usethisname = None
             for (cnter, name_) in enumerate(namelist):
-                if cnter != foundat:
-                    # STEP ONE
-                    print "ONE Changing %s to a cname to %s" % (name_, usethisname)
-                    if DOAPI:
-                        CLIAPI.perform_delete(name=name_, rectype='A')
-                        CLIAPI.perform_add(name=name_, content=usethisname, rectype='CNAME')
-        else:
-            thecommand = None
-            while thecommand not in options:
-                thecommand = intsafe(raw_input('Pick one '))
-            usethisname = namelist[thecommand]
+                if re_slotspot.search(name_):
+                    foundat = cnter
+                    usethisname = name_
+            options = []
             for (cnter, name_) in enumerate(namelist):
-                if cnter != thecommand:
-                    # STEP TWO
-                    print "TWO Changing %s to a cname to %s" % (name_, usethisname)
-                    if DOAPI:
-                        CLIAPI.perform_delete(name=name_, rectype='A')
-                        CLIAPI.perform_add(name=name_, content=usethisname, rectype='CNAME')
-
-        print ""
-
-####################
+                thisbe = ""
+                if foundat == cnter:
+                    thisbe = "< -- -- --"
+                print "%s %s %s" % (cnter, name_, thisbe)
+                options.append(cnter)
+            if foundat >= 0:
+                for (cnter, name_) in enumerate(namelist):
+                    if cnter != foundat:
+                        # STEP ONE
+                        print "ONE Changing %s to a cname to %s" % (name_, usethisname)
+                        if DOAPI:
+                            CLIAPI.perform_delete(name=name_, rectype='A')
+                            CLIAPI.perform_add(name=name_, content=usethisname, rectype='CNAME')
+            else:
+                thecommand = None
+                while thecommand not in options:
+                    thecommand = intsafe(raw_input('Pick one '))
+                usethisname = namelist[thecommand]
+                for (cnter, name_) in enumerate(namelist):
+                    if cnter != thecommand:
+                        # STEP TWO
+                        print "TWO Changing %s to a cname to %s" % (name_, usethisname)
+                        if DOAPI:
+                            CLIAPI.perform_delete(name=name_, rectype='A')
+                            CLIAPI.perform_add(name=name_, content=usethisname, rectype='CNAME')
 
 # now we have gotten changed to cnames all the appropriate records.
 
-arec_content, rev_content = build_arecdict()
-issue_dct = {}
-counter = 0
-for addr in arec_content:
-    arpa = addr_to_arpa(addr)
-    name = arec_content[addr][0]
-    revqry = session.query(Records)\
-                    .filter(Records.name == arpa)\
-                    .filter(Records.type == 'PTR')
-    revrecs = revqry.all()
-    if len(revrecs) == 0:
-        if isprivate(addr):
+def fixrev_fromarec():
+    """Knowing all arecs in pop, fix the reverses that do not correlate."""
+    arec_content, rev_content = build_arecdict()
+    print "Attempting fix of reverse records not being what the a record says they should be"
+    issue_dct = {}
+    counter = 0
+    for addr in arec_content:
+        arpa = addr_to_arpa(addr)
+        name = arec_content[addr][0]
+        revqry = session.query(Records)\
+                        .filter(Records.name == arpa)\
+                        .filter(Records.type == 'PTR')
+        revrecs = revqry.all()
+        if len(revrecs) == 0:
+            if isprivate(addr):
+                counter += 1
+                print('%s No reverse found %s %s %s' % (counter, name, addr, arpa))
+                if DOAPI:
+                    CLIAPI.fixrev(hostname=name, revname=arpa)
+        elif len(revrecs) == 1:
+            if revrecs[0].content == name:
+                #  Woo Hoo, we be good
+                pass
+            else:
+                issue_dct[arpa] = [name]
+                print "will fix reverse %s to PTR to %s" % (arpa, name)
+                if DOAPI:
+                    CLIAPI.fixrev(hostname=name, revname=arpa)
+        else:
             counter += 1
-            print('%s No reverse found %s %s %s' % (counter, name, addr, arpa))
-            if DOAPI:
-                CLIAPI.fixrev(hostname=name, revname=arpa)
-    elif len(revrecs) == 1:
-        if revrecs[0].content == name:
-            #  Woo Hoo, we be good
-            pass
+            #print('%s %s %s  ..  "greater than 1"  ..  %s' % (counter, rec, rev, len(revrecs)))
+    pprint(issue_dct)
+
+
+def check_ptrs():
+    perfectcnt = 0
+    namekey_dct, ipkey_dct = build_ptr_dict()
+    ipkey_forw_dct, namekey_forw_dct = build_arecdict()
+    print "back from build_ptr_dict"
+    counter = 0
+    for cnter, ipaddr in enumerate(ipkey_dct):
+        if not ipkey_dct[ipaddr]:
+            print "Hmmmmm %s %s" % (ipaddr, ipkey_dct[ipaddr])
+        elif len(ipkey_dct[ipaddr]) != 1:
+            print "len not 1 %s %s" % (ipaddr, ipkey_dct[ipaddr])
         else:
-            issue_dct[arpa] = [name]
-            print "will fix reverse %s to PTR to %s" % (arpa, name)
-            if DOAPI:
-                CLIAPI.fixrev(hostname=name, revname=arpa)
-            #print('%s 1 but wrong %s %s %s ' % (counter, rec.name, revrecs[0].name, revrecs[0].content))
-            #cqry = content_is_qry(rec.content, checkdom=checkdomain)
-            #for (cnter, item) in enumerate(cqry):
-            #    thisbe = ""
-            #    if item.name == revrecs[0].content:
-            #        thisbe = "< -- -- --"
-            #    print "    %s %s %s " % (cnter, item, thisbe)
-            #counter += 1
-            #onebutwrong[revrecs[0].name] = rec.name
-            #print ""
-    else:
-        counter += 1
-        #print('%s %s %s  ..  "greater than 1"  ..  %s' % (counter, rec, rev, len(revrecs)))
+            # print "namelist is %s" % ipkey_dct[ipaddr]
+            if not re_ipdash.search(ipkey_dct[ipaddr][0]):
+                counter += 1
+                fw_namelst = 'xxx'
+                if ipaddr in ipkey_forw_dct:
+                    fw_namelst = ipkey_forw_dct[ipaddr]
+                fw_iplist = 'xxx'
+                if ipkey_dct[ipaddr][0] in namekey_forw_dct:
+                    fw_iplist = namekey_forw_dct[ipkey_dct[ipaddr][0]]
+
+                if ipkey_dct[ipaddr] == fw_namelst and ipaddr == fw_iplist[0]:
+                    perfectcnt += 1
+                    pass
+                else:
+                    print "%s %s %s %s %s %s" % (cnter, counter, ipaddr, ipkey_dct[ipaddr], fw_namelst, fw_iplist)
+    print "perfectcnt %s" % (perfectcnt)
 
 
-pprint(issue_dct)
-sys.exit()
+if __name__ == '__main__':
+    #fix_arecs_tocnames()
+    #fixrev_fromarec()
 
-tocname = {}
-for addr in arec_content:
-    revcontent = arec_content[addr]
-    
-    qry = session.query(Records)\
-                 .filter(Records.type == 'A')\
-                 .filter(Records.domain_id == sqry_fw)\
-                 .filter(Records.content == addr).all()
-    if len(qry) > 1:
-        print "fwd and rev not onetoone %s %s" % (addr, revcontent)
-        foundat = -1
-        usethisname = None
-        for (cnter, item) in enumerate(qry):
-            if re_slotspot.search(item.name):
-                foundat = cnter
-                usethisname = item.name
-            if foundat == -1 and len(revcontent) == 1 and item.name == revcontent[0]:
-                foundat = cnter
-                usethisname = item.name
-        valid = []
-        for (cnter, item) in enumerate(qry):
-            thisbe = ""
-            if foundat == cnter:
-                thisbe = "< -- -- --"
-            print "%s %s %s" % (cnter, item, thisbe)
-            valid.append(cnter)
-        if foundat >= 0:
-            for (cnter, item) in enumerate(qry):
-                if cnter != foundat:
-                    tocname[item.name] = usethisname
-                    # STEP ONE
-                    #CLIAPI.perform_delete(name=item.name, rectype='A')
-                    #CLIAPI.perform_add(name=item.name, content=usethisname, rectype='CNAME')
-        else:
-            thecommand = None
-            while thecommand not in valid:
-                thecommand = intsafe(raw_input('Pick one '))
-            usethisname = qry[thecommand].name
-            for (cnter, item) in enumerate(qry):
-                if cnter != thecommand:
-                    # STEP TWO
-                    print "Changing %s to a cname to %s" % (item.name, usethisname)
-                    #CLIAPI.perform_delete(name=item.name, rectype='A')
-                    #CLIAPI.perform_add(name=item.name, content=usethisname, rectype='CNAME')
+    arec_content, rev_content = build_arecdict()
+    for name in rev_content:
+        if len(rev_content[name]) > 1:
+            print "more than one address ?? %s %s" % (name, rev_content[name])
+    #pprint(rev_content)
 
-        print ""
+    check_ptrs()
+    sys.exit()
 
-# pprint(tocname)
 
-strng = pformat(tocname, indent=4)
-op_fv = open('/tmp/tocname', 'w')
-op_fv.write(strng)
+#strng = pformat(noreverse, indent=4)
+#op_fv = open('/tmp/noreverse', 'w')
+#op_fv.write(strng)
 
-strng = pformat(onebutwrong, indent=4)
-op_fv = open('/tmp/onebutwrong', 'w')
-op_fv.write(strng)
 
-strng = pformat(noreverse, indent=4)
-op_fv = open('/tmp/noreverse', 'w')
-op_fv.write(strng)
+## looking for records that should be cnames
+#sqry_fw = session.query(Domains.id)\
+#                 .filter(Domains.name == checkdomain)
+
+#multsqry_rv = session.query(Records.content, func.count().label('cnt'))\
+#                     .filter(Records.type == 'A')\
+#                     .filter(Records.domain_id == sqry_fw)\
+#                     .group_by(Records.content)\
+#                     .subquery('multsqry_rv')
+
+#multqry_rv = session.query(multsqry_rv.c.content)\
+#                    .filter(multsqry_rv.c.cnt > 1)
+
+#sqry_fw = session.query(Domains.id)\
+#                 .filter(Domains.name == checkdomain)
+
+#multsqry_fw = session.query(Records.name, func.count().label('cnt'))\
+#                     .filter(Records.type == 'A')\
+#                     .filter(Records.domain_id == sqry_fw)\
+#                     .group_by(Records.name)\
+#                     .subquery('multsqry_fw')
+
+#multqry_fw = session.query(multsqry_fw.c.name)\
+#                    .filter(multsqry_fw.c.cnt > 1)
 
