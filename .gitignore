@@ -3,3 +3,4 @@
 keys.cfg
 *.log
 api.cfg
+pdns_forw_revc
