@@ -17,7 +17,6 @@ dictof = {
     '192.168.196.1': 'vmware-lod-vips-gw.pf.vips.den01.pop'}
 
 
-
 for ipaddress in dictof:
     hostname = dictof[ipaddress]
     ipspl = ipaddress.split('.')
