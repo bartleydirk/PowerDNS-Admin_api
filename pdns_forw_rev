@@ -22,6 +22,8 @@ re_slotspot = re.compile(r'slot.*\.spotx\.')
 re_addrarpa = re.compile(r'\.in-addr\.arpa')
 re_ip6arpa = re.compile(r'ip6.arpa')
 re_ipdash = re.compile(r'^ip-')
+re_ip4start = re.compile(r'^([0-9\-]*).*')
+re_dashend = re.compile(r'(.*)\-$')
 
 
 Base = declarative_base()
@@ -262,11 +264,18 @@ def check_ptrs():
                 if ipkey_dct[ipaddr][0] in namekey_forw_dct:
                     fw_iplist = namekey_forw_dct[ipkey_dct[ipaddr][0]]
 
+                #nametolist = namekey_dct[]
+
                 if ipkey_dct[ipaddr] == fw_namelst and ipaddr == fw_iplist[0]:
                     perfectcnt += 1
                 else:
                     counter += 1
-                    print("%s %s %s %s %s %s" % (cnter, counter, ipaddr, ipkey_dct[ipaddr], fw_namelst, fw_iplist))
+                    qwer = ''
+                    #print ipkey_dct[ipaddr][0]
+                    asdf = re_ip4start.sub(r'\g<1>', ipkey_dct[ipaddr][0])
+                    if asdf:
+                        qwer = re_dashend.sub(r'\g<1>', asdf)
+                    print("%s %s %s %s %s %s '%s'" % (cnter, counter, ipaddr, ipkey_dct[ipaddr], fw_namelst, fw_iplist, qwer))
     print("perfectcnt %s" % (perfectcnt))
 
 def heinous_repeats_nonapi():
