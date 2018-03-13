@@ -217,8 +217,8 @@ class Clientapi(object):
             url = '%s/fixrev' % (self.baseurl)
             jdata = fetch_json(url, headers=headers, data=data, method='POST')
 
-            self.log("jdata from server, pprint follows", level=5)
-            self.log(pformat(jdata, indent=4), level=10)
+            self.log("jdata from server, pprint follows", level=6)
+            self.log(pformat(jdata, indent=6), level=10)
         else:
             self.log("Need a hostname and an revname", level=5)
 

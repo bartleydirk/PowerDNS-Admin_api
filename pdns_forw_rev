@@ -235,6 +235,7 @@ def fixrev_fromarec():
                 print('%s No reverse found %s %s %s' % (counter, fname, addr, arpa))
                 if DOAPI:
                     CLIAPI.fixrev(hostname=fname, revname=arpa)
+                    sys.exit()
         elif len(revrecs) == 1:
             if revrecs[0].content == fname:
                 #  Woo Hoo, we be good
@@ -244,6 +245,7 @@ def fixrev_fromarec():
                 print("will fix reverse %s to PTR to %s" % (arpa, fname))
                 if DOAPI:
                     CLIAPI.fixrev(hostname=fname, revname=arpa)
+                    sys.exit()
         else:
             counter += 1
             # print('%s %s %s  ..  "greater than 1"  ..  %s' % (counter, rec, rev, len(revrecs)))
@@ -343,14 +345,14 @@ def heinous_repeats_nonapi():
 
 if __name__ == '__main__':
     # fix_arecs_tocnames()
-    # fixrev_fromarec()
+    fixrev_fromarec()
 
-    _, rev_content = build_arecdict()
-    for name in rev_content:
-        if len(rev_content[name]) > 1:
-            print("more than one address ?? %s %s" % (name, rev_content[name]))
+    #_, rev_content = build_arecdict()
+    #for name in rev_content:
+    #    if len(rev_content[name]) > 1:
+    #        print("more than one address ?? %s %s" % (name, rev_content[name]))
     # pprint(rev_content)
 
-    check_ptrs()
+    # check_ptrs()
     # heinous_repeats_nonapi()
     sys.exit()
