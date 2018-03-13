@@ -41,7 +41,7 @@ checkdomain = 'pop'
 
 
 def intsafe(inval):
-    """ turn a value into a integer without epic fail """
+    """turn a value into a integer without epic fail."""
     val = inval
     try:
         val = int(val)
@@ -51,7 +51,7 @@ def intsafe(inval):
 
 
 def isprivate(addr):
-    """Is an ip address a private ip address."""
+    """Test to see if an ip address a private ip address."""
     retval = False
     # pylint: disable=E0602
     addr = ipaddress.ip_address(unicode(addr))
@@ -64,24 +64,29 @@ def isprivate(addr):
 
 def addr_to_arpa(addr):
     """Take address ipv4, return in-addr.arpa."""
+    retval = None
     test = addr.split('.')
     if len(test) == 4:
-        return "%s.%s.%s.%s.in-addr.arpa" % (test[3], test[2], test[1], test[0])
+        retval = "%s.%s.%s.%s.in-addr.arpa" % (test[3], test[2], test[1], test[0])
+    return retval
 
 
 def apra_to_addr(arpa):
     """Take the arpa return addr."""
+    retval = None
     if re_ip6arpa.search(arpa):
         print('returning none %s' % (arpa))
         return None
     arpaless = re_addrarpa.sub('', arpa)
     test = arpaless.split('.')
     if len(test) == 4:
-        return "%s.%s.%s.%s" % (test[3], test[2], test[1], test[0])
+        retval = "%s.%s.%s.%s" % (test[3], test[2], test[1], test[0])
+    return retval
 
 
 class Domains(Base):
     """Model for the domains table."""
+
     __tablename__ = 'domains'
     id = Column(INTEGER(), primary_key=True, nullable=False)
     name = Column(VARCHAR(length=255))
@@ -92,11 +97,13 @@ class Domains(Base):
     account = Column(VARCHAR(length=40))
 
     def __repr__(self):
+        """Represent an instance of the class."""
         return '%s %s %s' % (self.id, self.type, self.name)
 
 
 class Records(Base):
     """Model for the records database table."""
+
     __tablename__ = 'records'
     id = Column(INTEGER(), primary_key=True, nullable=False)
     domain_id = Column(INTEGER())
@@ -111,6 +118,7 @@ class Records(Base):
     auth = Column(SmallInteger())
 
     def __repr__(self):
+        """Represent an instance of the class."""
         return '%s %s %s %s' % (self.id, self.type, self.name, self.content)
 
 
@@ -163,7 +171,7 @@ def build_ptr_dict():
 
 
 def fix_arecs_tocnames():
-    """A method to find 'A' records that point to the same ip and ask the user to change all but one to CNAMEs"""
+    """A method to find 'A' records that point to the same ip and ask the user to change all but one to CNAMEs."""
     arec_fwd, _ = build_arecdict()
     print("Attempting fix of a records pointing to same ip by changing to cname %s" % (len(arec_fwd)))
     # pylint: disable=E0602,R1702
@@ -242,47 +250,77 @@ def fixrev_fromarec():
     pprint(issue_dct)
 
 
+def doesitstartwithip(ptrcontent):
+    """Check if the content of the PTR starts with w-x-y-z, an ip address."""
+    # print ipkey_dct[ipaddr][0]
+    asdf = re_ip4start.sub(r'\g<1>', ptrcontent)
+    isvalid = False
+    address = ''
+    if asdf:
+        qwer_ = re_dashend.sub(r'\g<1>', asdf)
+        address = re.sub(r'-', r'.', qwer_)
+
+        try:
+            host_bytes = address.split('.')
+            valid = [int(b) for b in host_bytes]
+            valid = [b for b in valid if b >= 0 and b <= 255]
+            isvalid = len(host_bytes) == 4 and len(valid) == 4
+        except:
+            isvalid = False
+
+    return (isvalid, address)
+
+
 def check_ptrs():
     """Check the PTR records make sure they do not point to nothing."""
     perfectcnt = 0
+    startsipvrcnt = 0
+    ipdashcnt = 0
     _, ipkey_dct = build_ptr_dict()
     ipkey_forw_dct, namekey_forw_dct = build_arecdict()
     print("back from build_ptr_dict")
     counter = 0
     for cnter, ipaddr in enumerate(ipkey_dct):
+        fw_namelst = 'xxx'
+        if ipaddr in ipkey_forw_dct:
+            fw_namelst = ipkey_forw_dct[ipaddr]
+        fw_iplist = 'xxx'
+        if ipkey_dct[ipaddr][0] in namekey_forw_dct:
+            fw_iplist = namekey_forw_dct[ipkey_dct[ipaddr][0]]
+        valid_ipvrstart, ipv4addr = doesitstartwithip(ipkey_dct[ipaddr][0])
+        tstfx1 = ipaddr and len(ipkey_dct[ipaddr]) == 1 and fw_namelst == 'xxx'
+        tstfx2 = fw_iplist == 'xxx' or len(fw_iplist) == 1 and fw_iplist[0] != ipaddr
+
         if not ipkey_dct[ipaddr]:
             print("Hmmmmm %s %s" % (ipaddr, ipkey_dct[ipaddr]))
         elif len(ipkey_dct[ipaddr]) != 1:
             print("len not 1 %s %s" % (ipaddr, ipkey_dct[ipaddr]))
+        elif re_ipdash.search(ipkey_dct[ipaddr][0]):
+            ipdashcnt += 1
+        elif ipkey_dct[ipaddr] == fw_namelst and ipaddr == fw_iplist[0]:
+            perfectcnt += 1
+        elif valid_ipvrstart:
+            startsipvrcnt += 1
+        elif tstfx1 and tstfx2:
+            arpa = addr_to_arpa(ipaddr)
+            ipspl = ipaddr.split('.')
+            fname = 'ip-%s-%s-%s-%s.poop' % (ipspl[0], ipspl[1], ipspl[2], ipspl[3])
+            print("will set reverse %s to PTR to %s" % (arpa, fname))
+            if DOAPI:
+                CLIAPI.fixrev(hostname=fname, revname=arpa)
         else:
-            # print "namelist is %s" % ipkey_dct[ipaddr]
-            if not re_ipdash.search(ipkey_dct[ipaddr][0]):
-                fw_namelst = 'xxx'
-                if ipaddr in ipkey_forw_dct:
-                    fw_namelst = ipkey_forw_dct[ipaddr]
-                fw_iplist = 'xxx'
-                if ipkey_dct[ipaddr][0] in namekey_forw_dct:
-                    fw_iplist = namekey_forw_dct[ipkey_dct[ipaddr][0]]
+            counter += 1
+            print("x %s %s %s %s %s %s '%s'" % (cnter, counter, ipaddr, ipkey_dct[ipaddr], fw_namelst,
+                                                fw_iplist, ipv4addr))
+    print("perfectcnt %s ipdashcnt %s startsipvrcnt %s" % (perfectcnt, ipdashcnt, startsipvrcnt))
 
-                #nametolist = namekey_dct[]
-
-                if ipkey_dct[ipaddr] == fw_namelst and ipaddr == fw_iplist[0]:
-                    perfectcnt += 1
-                else:
-                    counter += 1
-                    qwer = ''
-                    #print ipkey_dct[ipaddr][0]
-                    asdf = re_ip4start.sub(r'\g<1>', ipkey_dct[ipaddr][0])
-                    if asdf:
-                        qwer = re_dashend.sub(r'\g<1>', asdf)
-                    print("%s %s %s %s %s %s '%s'" % (cnter, counter, ipaddr, ipkey_dct[ipaddr], fw_namelst, fw_iplist, qwer))
-    print("perfectcnt %s" % (perfectcnt))
 
 def heinous_repeats_nonapi():
-    """Find the heinous repeats
-    | id    | domain_id | name                      | type | content                                      | ttl  | prio | change_date | disabled | ordername | auth |
-    | 16393 |        50 | 199.0.17.172.in-addr.arpa | PTR  | 172-17-0-199-wifi-mgmt.hq.booyahnetworks.com | 3600 |    0 |        NULL |        0 | NULL      |    1 |
-    | 16453 |        50 | 199.0.17.172.in-addr.arpa | PTR  | 172-17-0-199-wifi-mgmt.hq.booyahnetworks.com | 3600 |    0 |        NULL |        0 | NULL      |    1 |
+    """Find the heinous repeats.
+
+    | id    | domain_id | name                      | type | content                                      | ttl  | prio
+    | 16393 |        50 | 199.0.17.172.in-addr.arpa | PTR  | 172-17-0-199-wifi-mgmt.hq.booyahnetworks.com | 3600 |    0
+    | 16453 |        50 | 199.0.17.172.in-addr.arpa | PTR  | 172-17-0-199-wifi-mgmt.hq.booyahnetworks.com | 3600 |    0
     """
     qry1 = session.query(Records.domain_id, Records.name, Records.content, Records.type, func.count().label('cnt'))\
                   .group_by(Records.domain_id, Records.name, Records.content, Records.type)\
@@ -290,7 +328,7 @@ def heinous_repeats_nonapi():
     qry2 = session.query(qry1)\
                   .filter(qry1.c.cnt > 1)
     for item in qry2:
-        #print "%s %s %s %s" % (item.domain_id, item.name, item.content, item.type)
+        # print "%s %s %s %s" % (item.domain_id, item.name, item.content, item.type)
         mdll = session.query(Records)\
                       .filter(Records.domain_id == item.domain_id)\
                       .filter(Records.name == item.name)\
@@ -298,7 +336,7 @@ def heinous_repeats_nonapi():
                       .filter(Records.type == item.type)\
                       .order_by(desc(Records.id))\
                       .first()
-        print "%s" % mdll
+        print("%s" % mdll)
         session.delete(mdll)
     session.commit()
 
@@ -314,5 +352,5 @@ if __name__ == '__main__':
     # pprint(rev_content)
 
     check_ptrs()
-    #heinous_repeats_nonapi()
+    # heinous_repeats_nonapi()
     sys.exit()
