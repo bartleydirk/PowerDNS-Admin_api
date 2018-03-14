@@ -5,20 +5,17 @@
 #url="http://localhost:9393/apitest"
 #action="POST"
 
-url="http://dnstest2:8081/api/v1/servers/localhost/zones/spotx.tv."
+url="http://dnstest2:8081/api/v1/servers/localhost/zones/133.168.192.in-addr.arpa"
 action="PATCH"
 
 curl -X ${action} --data '{"rrsets": [{
-  "name": "fredd.spotx.tv.",
-  "type": "A",
-  "ttl": 86400,
+  "name": "133.168.192.in-addr.arpa.",
+  "type": "SOA",
   "changetype": "REPLACE",
-  "records": [ {
-    "content": "192.168.2.28",
-    "disabled": false
-  }]
-}]}' \
-  -H 'X-API-Key: o1eir9ahPhu7teighei2zoh,shaey' \
+  "records": [{"content": "dns001.den01.pop hostmaster.spotx.tv 2018031314 3600 900 2592000 3600",
+               "disabled": False}],
+  "ttl": 86400}]}' \
+ -H 'X-API-Key: o1eir9ahPhu7teighei2zoh,shaey' \
   ${url} | jq
 
 
