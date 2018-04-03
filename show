@@ -1,0 +1,31 @@
+#!/bin/bash
+
+
+function dodig {
+	cmd="dig -p5300 @dnstest2 -x ${ipaddr}"
+    echo ${cmd}
+    ${cmd}
+	cmd="dig -p5300 @dnstest2 ${host}"
+    echo ${cmd}
+    ${cmd}
+    echo "<cr> to continue"
+    read dum
+}
+
+#host="audiencedb002rac.spotx.iad02.pop."
+#ipaddr="192.168.136.245"
+host="be7rac.spotx.den01.pop."
+ipaddr="192.168.41.251"
+
+echo "running on host = ${host} and ipaddr = ${ipaddr}"
+
+dodig
+
+echo changing host ${host} to ipaddr ${ipaddr}
+
+./addhost ${host} ${ipaddr}
+
+dodig
+
+#dig @dnstest2 -x ${ipaddr}
+#dig @dnstest2 ${host}

@@ -1,0 +1,2 @@
+#!/bin/bash
+dig AXFR pop. -p5300 @dnstest2

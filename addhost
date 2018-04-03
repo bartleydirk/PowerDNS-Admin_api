@@ -1,28 +1,31 @@
 #!/usr/bin/env python
 """This is a class and a script to api to PowerDnsAdmin."""
 
+import sys
 # pylint: disable=E0401
 from admin_api.clientapi import Clientapi
+from pprint import pprint
+
+if len(sys.argv) > 2:
+    ipaddr = sys.argv[2]
+    host = sys.argv[1]
+else:
+    print "You must have arg 1 as the database and .."
+    sys.exit(0)
+
 
 
 CLIAPI = Clientapi()
 print('######## performing add')
 # pylint: disable=C0103
+
 dictof = {
-    'admin-internal.spotx.tg1.vips.den01.pop': 'admindash.spotx.den01.pop',
-    'spotmarket-mutate.spotx.den01.pop': 'supply-mutate.spotx.den01.pop',
-    'spotmarket-read.spotx.den01.pop': 'supply-read.spotx.den01.pop',
-    'sw1.den01.pop': 'sw1.spotx.den01.pop',
-    'sw2.den01.pop': 'sw2.spotx.den01.pop',
-    'syncconf.den01.pop': 'syncconf.spotx.den01.pop',
-    'tableau.spotx.den01.pop': 'tableau001.den01.pop',
-    'temptrax.den01.pop': 'temptrax.spotx.den01.pop',
-    'vault.den01.pop': 'vault.spotx.den01.pop',
-    'vpn001.den01.pop': 'vpn.spotx.den01.pop'}
-#dictof['fred.den01.pop.'] = 'audiencequery004rac.spotx.den01.pop.'
+    host: ipaddr}
+pprint(dictof)
+
 for name in dictof:
     content = dictof[name]
-    CLIAPI.perform_delete(name=name, rectype='A')
-    CLIAPI.perform_add(name=name, content=content, rectype='CNAME')
+    #CLIAPI.perform_delete(name=name, rectype='A')
+    #CLIAPI.perform_add(name=name, content=content, rectype='CNAME')
     #CLIAPI.perform_delete(name=name, rectype='CNAME')
-    #CLIAPI.perform_add(name=name, content='192.168.133.254', rectype='A')
+    CLIAPI.perform_add(name=name, content=content, rectype='A')
