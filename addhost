@@ -10,7 +10,7 @@ if len(sys.argv) > 2:
     ipaddr = sys.argv[2]
     host = sys.argv[1]
 else:
-    print "You must have arg 1 as the database and .."
+    print "You must have arg1 as the host and arg2 as ipaddress"
     sys.exit(0)
 
 

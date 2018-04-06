@@ -2,10 +2,12 @@
 
 
 function dodig {
-	cmd="dig -p5300 @dnstest2 -x ${ipaddr}"
+    dighost="dnstest2"
+    dighost="dnsmanager.den01.pop"
+	cmd="dig -p5300 @${dighost} -x ${ipaddr}"
     echo ${cmd}
     ${cmd}
-	cmd="dig -p5300 @dnstest2 ${host}"
+	cmd="dig -p5300 @${dighost} ${host}"
     echo ${cmd}
     ${cmd}
     echo "<cr> to continue"
@@ -15,7 +17,7 @@ function dodig {
 #host="audiencedb002rac.spotx.iad02.pop."
 #ipaddr="192.168.136.245"
 host="be7rac.spotx.den01.pop."
-ipaddr="192.168.41.251"
+ipaddr="192.168.41.252"
 
 echo "running on host = ${host} and ipaddr = ${ipaddr}"
 
@@ -27,5 +29,5 @@ echo changing host ${host} to ipaddr ${ipaddr}
 
 dodig
 
-#dig @dnstest2 -x ${ipaddr}
-#dig @dnstest2 ${host}
+#dig @${dighost} -x ${ipaddr}
+#dig @${dighost} ${host}

@@ -160,7 +160,8 @@ class Keypair(object):
         """Private keys should not be on the wrong host."""
         if self.sever_pair_onclient or self.client_pair_onserver:
             self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
-            raise Exception('should never get here sever_pair_onclient or client_pair_onserver')
+            raise Exception('should never get here sever_pair_onclient %s or client_pair_onserver %s' %
+                            (self.sever_pair_onclient, self.client_pair_onserver))
 
     def __genkeypair(self):
         """No keys, so lets create them."""

@@ -350,6 +350,8 @@ def heinous_repeats_nonapi():
 
 if __name__ == '__main__':
     fix_arecs_tocnames()
+
+    # it is really hard to do this, fix the pointers if there are crap tons of arecs, cnames to be fixed first.
     # fixrev_fromarec()
 
     #_, rev_content = build_arecdict()
@@ -360,4 +362,3 @@ if __name__ == '__main__':
 
     # check_ptrs()
     # heinous_repeats_nonapi()
-    sys.exit()
