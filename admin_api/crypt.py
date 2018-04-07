@@ -159,7 +159,7 @@ class Keypair(object):
     def __privateonwronghost(self):
         """Private keys should not be on the wrong host."""
         if self.sever_pair_onclient or self.client_pair_onserver:
-            self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
+            self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here %s" % (self.userpair))
             raise Exception('should never get here sever_pair_onclient %s or client_pair_onserver %s' %
                             (self.sever_pair_onclient, self.client_pair_onserver))
 
