@@ -249,10 +249,10 @@ class Keypair(object):
         return str(signature_object[0])
 
     def verify(self, toverify_in, encoded_signature_in):
-        """
-        Verify the string with the signature
-            toverify_in: is the string
-            encoded_signature_in: is the long, which was converted to a string
+        """Verify the string with the signature.
+
+        toverify_in: is the string
+        encoded_signature_in: is the long, which was converted to a string
         """
         self.log('verify -> toverify_in\n"%s"' % toverify_in, level=5)
         md5 = MD5.new()

@@ -17,10 +17,7 @@ class Clientapi(object):
 
     def __init__(self):
         """Initialze the Clientapi class."""
-        self.baseurl = 'http://localhost:9393'
-        
         self.showlog = True
-
         oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         self.logfile = '%s/afile.log' % oneup
         log_fv = open(self.logfile, 'w')
@@ -32,7 +29,6 @@ class Clientapi(object):
         config = ApiParser()
         config.read(configfile)
         self.username = config.safe_get('userinfo', 'username')
-        #self.baseurl = 'http://localhost:9393'
         self.baseurl = config.safe_get('serverinfo', 'baseurl')
 
         self.clientkeypair = Keypair(username='mykeys', showlog=True, isclient=True)
@@ -119,7 +115,7 @@ class Clientapi(object):
         return retval
 
     def savetoken(self, encryptedtoken):
-        """Save the Token"""
+        """Save the Token."""
         self.log('gettoken -> encryptedtoken is %s' % (encryptedtoken))
         # self.clientkeypair.showlog = True
         token_ = self.clientkeypair.decrypt(encryptedtoken)

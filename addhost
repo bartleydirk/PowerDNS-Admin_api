@@ -14,7 +14,6 @@ else:
     sys.exit(0)
 
 
-
 CLIAPI = Clientapi()
 print('######## performing add')
 # pylint: disable=C0103

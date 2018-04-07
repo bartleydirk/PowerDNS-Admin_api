@@ -1,22 +1,17 @@
+"""An api to interact with powerdnsadmin to make changes scriptable."""
+import hashlib
+import json
 import re
 import sys
-import json
-import requests
 import urlparse
-import hashlib
 from ConfigParser import RawConfigParser
+import requests
 
-
-# from app import app
-# from distutils.version import StrictVersion
-
-# if 'TIMEOUT' in app.config.keys():
-#    TIMEOUT = app.config['TIMEOUT']
-# else:
 TIMEOUT = 10
 
 
 def auth_from_url(url):
+    """Are there credentials in the url."""
     auth = None
     parsed_url = urlparse.urlparse(url).netloc
     if '@' in parsed_url:
@@ -26,6 +21,7 @@ def auth_from_url(url):
 
 
 def build_rrset(name=None, ipaddr=None, type_='A', ttl=86400, disabled=False):
+    """Helper method for buidling and rrset dictionary."""
     rrset = {"name": "%s" % (name),
              "type": "%s" % (type_),
              "ttl": "%s" % (ttl),
@@ -37,7 +33,8 @@ def build_rrset(name=None, ipaddr=None, type_='A', ttl=86400, disabled=False):
 
 
 def fetch_remote(remote_url, method='GET', data=None, accept=None, params=None, timeout=None, headers=None):
-    if data is not None and type(data) != str:
+    """Fetch from the remote."""
+    if data is not None and not isinstance(data, str):
         data = json.dumps(data)
 
     if timeout is None:
@@ -55,73 +52,72 @@ def fetch_remote(remote_url, method='GET', data=None, accept=None, params=None, 
     if headers is not None:
         our_headers.update(headers)
 
-    r = requests.request(
-        method,
-        remote_url,
-        headers=headers,
-        verify=verify,
-        auth=auth_from_url(remote_url),
-        timeout=timeout,
-        data=data,
-        params=params, )
+    res = requests.request(method, remote_url, headers=headers, verify=verify, auth=auth_from_url(remote_url),
+                           timeout=timeout, data=data, params=params, )
     try:
-        if r.status_code not in (200, 400, 422):
-            r.raise_for_status()
+        if res.status_code not in (200, 400, 422):
+            res.raise_for_status()
     except Exception as err:
-        raise RuntimeError("While fetching " + remote_url + ": " + str(err)), None, sys.exc_info()[2]
+        raise RuntimeError("While fetching " + remote_url + ": " + str(err))
 
-    return r
+    return res
 
 
 def fetch_json(remote_url, method='GET', data=None, params=None, headers=None):
-    r = fetch_remote(remote_url, method=method, data=data, params=params, headers=headers,
-                     accept='application/json; q=1')
+    """Fetch wrapper for jason data."""
+    res = fetch_remote(remote_url, method=method, data=data, params=params, headers=headers,
+                       accept='application/json; q=1')
 
     if method == "DELETE":
         return True
 
-    if r.status_code == 204:
+    if res.status_code == 204:
         return {}
 
     try:
-        assert('json' in r.headers['content-type'])
-    except Exception as e:
-        raise Exception("While fetching " + remote_url + ": " + str(e)), None, sys.exc_info()[2]
+        assert 'json' in res.headers['content-type']
+    except Exception as err:
+        # , None, sys.exc_info()[2]
+        raise Exception("While fetching " + remote_url + ": " + str(err))
 
     # don't use r.json here, as it will read from r.text, which will trigger
     # content encoding auto-detection in almost all cases, WHICH IS EXTREMELY
     # SLOOOOOOOOOOOOOOOOOOOOOOW. just don't.
     data = None
     try:
-        data = json.loads(r.content)
+        data = json.loads(res.content)
     except UnicodeDecodeError:
-        data = json.loads(r.content, 'iso-8859-1')
+        data = json.loads(res.content, 'iso-8859-1')
     return data
 
 
 def display_record_name(data):
+    """Display a record helper function."""
     record_name, domain_name = data
     if record_name == domain_name:
-        return '@'
+        retval = '@'
     else:
-        return record_name.replace('.' + domain_name, '')
+        retval = record_name.replace('.' + domain_name, '')
+    return retval
 
 
 class ApiParser(RawConfigParser):
-    """
-    A class to inherit from RawConfigParser and have safe methods to get values
+    """A class to inherit from RawConfigParser.
+
+    Built to have safe methods to get values
     So that the config file can not have the value and there will be a default
     """
+
     def safe_get(self, section, option, default=None):
-        """ Safe Get Method """
+        """Safe Get Method."""
+        retval = default
         if self.has_option(section, option):
-            return self.get(section, option)
-        else:
-            return default
+            retval = self.get(section, option)
+        return retval
 
     def safe_getboolean(self, section, option, default=False):
-        """ Safe Get a boolean value Method """
+        """Safe Get a boolean value Method."""
+        retval = default
         if self.has_option(section, option):
-            return self.getboolean(section, option)
-        else:
-            return default
+            retval = self.getboolean(section, option)
+        return retval
