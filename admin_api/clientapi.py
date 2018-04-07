@@ -72,6 +72,7 @@ class Clientapi(object):
         headers['X-API-Serverpubkey'] = spubkey_b64
 
         url = '%s/checkkeys' % (self.baseurl)
+        self.log("Clientapi about to fetch with headers : %s" % (pformat(headers)))
         jdata = fetch_json(url, headers=headers, data=None, method='POST')
         self.log("Clientapi exchangekeys jdata returned : %s" % (jdata))
 
