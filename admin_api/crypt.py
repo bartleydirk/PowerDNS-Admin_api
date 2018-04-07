@@ -3,6 +3,7 @@
 
 import os
 import base64
+import getpass
 import uuid
 from datetime import datetime, timedelta
 from pprint import pformat
@@ -51,10 +52,12 @@ class Keypair(object):
         self.uuid = uuid_
         self.isclient = isclient
         self.userpair = False
+        direct = '/home/%s/projects' % (getpass.getuser())
+        logfilename = 'api_file.log'
         if self.isclient:
-            self.logfile = '/home/dbartley/projects/PowerDNS-Admin_api/afile.log'
+            self.logfile = '%s/PowerDNS-Admin_api/%s' % (direct, logfilename)
         else:
-            self.logfile = '/home/dbartley/projects/PowerDNS-Admin/afile.log'
+            self.logfile = '%s/PowerDNS-Admin/%s' % (direct, logfilename)
 
         if not username:
             self.keypairname = 'server_keys'
@@ -77,6 +80,7 @@ class Keypair(object):
         self.config.read(self.cnfgfile)
         # do not want the keys from config if on client getting public key from server
         if not pubkeystring:
+            self.log("__init__ not pubkeystring %s" % (self))
             self.__getkeysfromconfig()
 
         if not checkexists:
@@ -91,8 +95,15 @@ class Keypair(object):
             self.log("Setting pubkeystring :\n%s" % (limitlines(self.public_key_string)))
             self.__rsaobjects_fromkeystrings()
 
-        # if we neither have a public key string or an object, we need to generate.
-        if not self.exists and not self.sever_pair_onclient:
+        self.log("initbefore, issue about to happen %s" % (self))
+        self.log("initbefore, issue data self.exists %s sever_pair_onclient %s" %
+                 (self.exists, self.sever_pair_onclient))
+
+        if self.client_pair_onserver and not self.exists:
+            # we dont need to generate a keypair if this is a client pair on the server and it does not exist
+            pass
+        elif not self.exists and not self.sever_pair_onclient:
+            # if we neither have a public key string or an object, we need to generate.
             self.__genkeypair()
 
     def initafter(self, pubkey, uuid_):
@@ -110,6 +121,10 @@ class Keypair(object):
         retval += '    keypairname is "%s"\n' % (self.keypairname)
         retval += '    public_key_string is "%s"\n' % (limitlines(self.public_key_string))
         retval += '    priv_key_string is "%s"\n' % (limitlines(self.priv_key_string))
+        retval += '    sever_pair_onclient is "%s"\n' % (self.sever_pair_onclient)
+        retval += '    client_pair_onserver is "%s"\n' % (self.client_pair_onserver)
+        retval += '    exists is "%s"\n' % (self.exists)
+
         return retval
 
     def __rsaobjects_fromkeystrings(self):
@@ -159,7 +174,7 @@ class Keypair(object):
     def __privateonwronghost(self):
         """Private keys should not be on the wrong host."""
         if self.sever_pair_onclient or self.client_pair_onserver:
-            self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here")
+            self.log("!!!!!!!!!!!!!!!!!!!!__genkeypair should never get here %s" % (self.userpair))
             raise Exception('should never get here sever_pair_onclient %s or client_pair_onserver %s' %
                             (self.sever_pair_onclient, self.client_pair_onserver))
 
