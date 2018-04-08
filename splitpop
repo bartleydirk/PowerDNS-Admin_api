@@ -3,33 +3,16 @@
 
 # import os
 # import sys
-import re
-import ipaddress
+# import re
+# import ipaddress
 # from pprint import pprint  # , pformat
 
 # pylint: disable=E0401,R0903
 # pylint: disable=invalid-name
 
 # from sqlalchemy import func, desc
-from admin_api.clientapi import Clientapi
+# from admin_api.clientapi import Clientapi
 from admin_api.pdnsmodels import Domains, Records, session
-
-DOAPI = False
-if DOAPI:
-    CLIAPI = Clientapi()
-re_slotspot = re.compile(r'slot.*\.spotx\.')
-re_addrarpa = re.compile(r'\.in-addr\.arpa')
-re_ip6arpa = re.compile(r'ip6.arpa')
-re_ipdash = re.compile(r'^ip-')
-re_ip4start = re.compile(r'^([0-9\-]*).*')
-re_dashend = re.compile(r'(.*)\-$')
-
-
-privatelist = []
-privatelist.append(ipaddress.ip_network(u'192.168.0.0/16'))
-privatelist.append(ipaddress.ip_network(u'172.16.0.0/12'))
-privatelist.append(ipaddress.ip_network(u'10.0.0.0/8'))
-
 
 checkdomain = 'pop'
 newdomlist = []
@@ -103,5 +86,7 @@ if __name__ == '__main__':
             print("%s About to change %s to %s from %s" % (cnter, rec, newdom.id, pop_mdl.id))
             rec.domain_id = newdom.id
         session.commit()
-        soamdl = record_query(pop_mdl.id, type_='SOA', dofirst=True)
-        dupsoarec(soamdl, newdom.id, newdom.name)
+        pop_soamdl = record_query(pop_mdl.id, type_='SOA', dofirst=True)
+        new_soamdl = record_query(newdom.id, type_='SOA', dofirst=True)
+        if pop_soamdl and not new_soamdl:
+            dupsoarec(pop_soamdl, newdom.id, newdom.name)
