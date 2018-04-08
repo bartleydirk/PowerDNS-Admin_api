@@ -28,6 +28,13 @@ class Domains(Base):
         """Represent an instance of the class."""
         return '%s %s %s' % (self.id, self.type, self.name)
 
+    def duplicate(self):
+        arguments = dict()
+        for name, column in self.__mapper__.columns.items():
+            if not (column.primary_key or column.unique):
+                arguments[name] = getattr(self, name)
+        return self.__class__(**arguments)
+
 
 class Records(Base):
     """Model for the records database table."""
@@ -48,3 +55,10 @@ class Records(Base):
     def __repr__(self):
         """Represent an instance of the class."""
         return '%s %s %s %s' % (self.id, self.type, self.name, self.content)
+
+    def duplicate(self):
+        arguments = dict()
+        for name, column in self.__mapper__.columns.items():
+            if not (column.primary_key or column.unique):
+                arguments[name] = getattr(self, name)
+        return self.__class__(**arguments)

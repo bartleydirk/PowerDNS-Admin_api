@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+"""A script to clean up the powerdns data."""
+
+# import os
+# import sys
+import re
+import ipaddress
+# from pprint import pprint  # , pformat
+
+# pylint: disable=E0401,R0903
+# pylint: disable=invalid-name
+
+# from sqlalchemy import func, desc
+from admin_api.clientapi import Clientapi
+from admin_api.pdnsmodels import Domains, Records, session
+
+DOAPI = False
+if DOAPI:
+    CLIAPI = Clientapi()
+re_slotspot = re.compile(r'slot.*\.spotx\.')
+re_addrarpa = re.compile(r'\.in-addr\.arpa')
+re_ip6arpa = re.compile(r'ip6.arpa')
+re_ipdash = re.compile(r'^ip-')
+re_ip4start = re.compile(r'^([0-9\-]*).*')
+re_dashend = re.compile(r'(.*)\-$')
+
+
+privatelist = []
+privatelist.append(ipaddress.ip_network(u'192.168.0.0/16'))
+privatelist.append(ipaddress.ip_network(u'172.16.0.0/12'))
+privatelist.append(ipaddress.ip_network(u'10.0.0.0/8'))
+
+
+checkdomain = 'pop'
+newdomlist = []
+newdomlist.append('den01.pop')
+newdomlist.append('sin01.pop')
+newdomlist.append('ams01.pop')
+newdomlist.append('iad02.pop')
+
+
+def domqry(domname):
+    """get a model for a domain."""
+    qry = session.query(Domains)\
+                 .filter(Domains.name == domname)\
+                 .first()
+    return qry
+
+
+def record_query(domid, type_=None, namelike=None, doall=False, dofirst=False):
+    """Build query on records table."""
+    nsq = session.query(Records)\
+                 .filter(Records.domain_id == domid)
+    if type_:
+        nsq = nsq.filter(Records.type == type_)
+    if namelike:
+        nsq = nsq.filter(Records.name.like("%%.%s" % (newdom.name)))
+    if dofirst:
+        nsq = nsq.first()
+    elif doall:
+        nsq = nsq.all()
+    return nsq
+
+
+def dupnsrecs(qry, newdomid):
+    """Duplicate the NS records of pop to new domain."""
+    for nsrec in qry:
+        print("duplicating %s for %s" % (nsrec, newdomid))
+        newnsrec = nsrec.duplicate()
+        newnsrec.domain_id = newdomid
+        session.add(newnsrec)
+    session.commit()
+
+
+def dupsoarec(mdl, newdomid, newdomain_name):
+    """Duplicate the SOA record from pop to new domain."""
+    print("duplicating %s for %s, with name %s" % (mdl, newdomid, newdomain_name))
+    newsoarec = mdl.duplicate()
+    newsoarec.domain_id = newdomid
+    newsoarec.name = newdomain_name
+    print("newsoarec content %s" % (newsoarec.content))
+    print(newsoarec)
+    session.add(newsoarec)
+    session.commit()
+
+
+if __name__ == '__main__':
+    pop_mdl = domqry('pop')
+    print("pop domain id is %s" % (pop_mdl.id))
+    nsqry = record_query(pop_mdl.id, type_='NS')
+    for domain_inlist in newdomlist:
+        newdom = domqry(domain_inlist)
+        # create if it does not exist
+        if not newdom:
+            newdom = pop_mdl.duplicate()
+            newdom.name = domain_inlist
+            session.add(newdom)
+            session.commit()
+            dupnsrecs(nsqry, newdom.id)
+        recordqry = record_query(pop_mdl.id, type_='NS', namelike="%%.%s" % (newdom.name))
+        print(recordqry)
+        for (cnter, rec) in enumerate(recordqry):
+            print("%s About to change %s to %s from %s" % (cnter, rec, newdom.id, pop_mdl.id))
+            rec.domain_id = newdom.id
+        session.commit()
+        soamdl = record_query(pop_mdl.id, type_='SOA', dofirst=True)
+        dupsoarec(soamdl, newdom.id, newdom.name)
