@@ -5,9 +5,10 @@
 #url="http://localhost:9393/apitest"
 #action="POST"
 
-url="http://dnstest2:8081/api/v1/servers/localhost/zones"
-action="PATCH"
+zone="pop"
+url="http://dnstest2:8081/api/v1/servers/localhost/zones/${zone}."
 action="POST"
+action="PATCH"
 
 #curl \
 curl -X ${action} \

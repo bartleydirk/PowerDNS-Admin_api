@@ -1,14 +1,1 @@
-{
- "kind": "Native",
- "masters": [],
- "name": "133.168.192.in-addr.arpa.",
- "nameservers": ["dns001.den01.pop.",
-                 "dns002.den01.pop.",
-                 "dns001.iad02.pop.",
-                 "dns002.iad02.pop.",
-                 "dns001.sin01.pop.",
-                 "dns002.sin01.pop.",
-                 "dns001.ams01.pop.",
-                 "dns002.ams01.pop."],
- "soa_edit": "INCEPTION-INCREMENT"
-}
+{"rrsets": [{"records": [{"content": "sidx002.spotx.hkg01.pop.", "disabled": false}], "changetype": "REPLACE", "type": "CNAME", "name": "syncconf.spotx.hkg01.pop.", "ttl": 3600}]}

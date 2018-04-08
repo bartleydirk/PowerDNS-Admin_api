@@ -1,0 +1,14 @@
+{
+ "kind": "Native",
+ "masters": [],
+ "name": "pop",
+ "nameservers": ["dns001.den01.pop.",
+                 "dns002.den01.pop.",
+                 "dns001.iad02.pop.",
+                 "dns002.iad02.pop.",
+                 "dns001.sin01.pop.",
+                 "dns002.sin01.pop.",
+                 "dns001.ams01.pop.",
+                 "dns002.ams01.pop."],
+ "soa_edit": "INCEPTION"
+}
