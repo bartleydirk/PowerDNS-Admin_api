@@ -31,9 +31,6 @@ privatelist.append(ipaddress.ip_network(u'172.16.0.0/12'))
 privatelist.append(ipaddress.ip_network(u'10.0.0.0/8'))
 
 
-checkdomain = 'pop'
-
-
 def intsafe(inval):
     """turn a value into a integer without epic fail."""
     val = inval

@@ -2,6 +2,7 @@
 
 
 function dodig {
+    dostop=$1
     dighost="dnstest2"
     dighost="dnsmanager.den01.pop"
 	cmd="dig -p5300 @${dighost} -x ${ipaddr}"
@@ -11,7 +12,9 @@ function dodig {
     echo ${cmd}
     ${cmd}
     echo "<cr> to continue"
-    read dum
+    if [ -z ${dostop} ] ; then
+        read dum
+    fi
 }
 
 #host="audiencedb002rac.spotx.iad02.pop."
@@ -20,14 +23,12 @@ host="be7rac.spotx.den01.pop."
 ipaddr="192.168.41.252"
 
 echo "running on host = ${host} and ipaddr = ${ipaddr}"
-
 dodig
 
 echo changing host ${host} to ipaddr ${ipaddr}
-
 ./addhost ${host} ${ipaddr}
 
-dodig
+dodig asdf
 
 #dig @${dighost} -x ${ipaddr}
 #dig @${dighost} ${host}
