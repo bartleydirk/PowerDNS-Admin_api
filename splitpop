@@ -7,14 +7,11 @@
 # import ipaddress
 # from pprint import pprint  # , pformat
 
-# pylint: disable=E0401,R0903
-# pylint: disable=invalid-name
-
 # from sqlalchemy import func, desc
 # from admin_api.clientapi import Clientapi
 from admin_api.pdnsmodels import Domains, Records, session
 
-checkdomain = 'pop'
+# pylint: disable=C0103
 newdomlist = []
 newdomlist.append('den01.pop')
 newdomlist.append('sin01.pop')
