@@ -29,6 +29,7 @@ class Domains(Base):
         return '%s %s %s' % (self.id, self.type, self.name)
 
     def duplicate(self):
+        """Duplicate for copy."""
         arguments = dict()
         for name, column in self.__mapper__.columns.items():
             if not (column.primary_key or column.unique):
@@ -57,6 +58,7 @@ class Records(Base):
         return '%s %s %s %s' % (self.id, self.type, self.name, self.content)
 
     def duplicate(self):
+        """Duplicate for copy."""
         arguments = dict()
         for name, column in self.__mapper__.columns.items():
             if not (column.primary_key or column.unique):
