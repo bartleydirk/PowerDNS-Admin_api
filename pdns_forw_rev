@@ -303,16 +303,31 @@ def heinous_repeats_nonapi():
 
 
 if __name__ == '__main__':
-    #fix_arecs_tocnames()
+    arglen = len(sys.argv)
+    passval = None
+    # print "This is the name of the script: ", sys.argv[0]
+    # print "Number of arguments: ", len(sys.argv)
+    # print "The arguments are: " , str(sys.argv)
+    if arglen == 2:
+        passval = sys.argv[1]
+
+    if passval == 'cnamefix':
+        fix_arecs_tocnames()
 
     # it is really hard to do this, fix the pointers if there are crap tons of arecs, cnames to be fixed first.
-    # fixrev_fromarec()
+    elif passval == 'fixrev':
+        fixrev_fromarec()
 
-    #_, rev_content = build_arecdict()
-    #for name in rev_content:
-    #    if len(rev_content[name]) > 1:
-    #        print("more than one address ?? %s %s" % (name, rev_content[name]))
-    #pprint(rev_content)
+    elif passval == 'showdict':
+        _, rev_content = build_arecdict()
+        for name in rev_content:
+            if len(rev_content[name]) > 1:
+                print("more than one address ?? %s %s" % (name, rev_content[name]))
+        pprint(rev_content)
 
-    # check_ptrs()
-    heinous_repeats_nonapi()
+    elif passval == 'pointers': 
+        check_ptrs()
+    elif passval == 'heinous':
+        heinous_repeats_nonapi()
+    else:
+        print "use one of %s %s" % (sys.argv[0], "heinous pointers showdict fixrev cnamefix ")
