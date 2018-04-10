@@ -3,3 +3,10 @@ username = dbartley
 
 [serverinfo]
 baseurl = http://localhost:9393
+
+# for direct access to pdns database
+[database]
+user = pdns_user
+pass = abc123
+host = ahost
+database = pdns
