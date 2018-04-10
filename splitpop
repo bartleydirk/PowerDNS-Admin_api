@@ -27,12 +27,15 @@ def domqry(domname):
     return qry
 
 
-def record_query(domid, type_=None, namelike=None, doall=False, dofirst=False):
+# pylint: disable=R0913
+def record_query(domid, type_=None, namelike=None, doall=False, dofirst=False, nottype=None):
     """Build query on records table."""
     nsq = session.query(Records)\
                  .filter(Records.domain_id == domid)
     if type_:
         nsq = nsq.filter(Records.type == type_)
+    if nottype:
+        nsq = nsq.filter(Records.type != nottype)
     if namelike:
         nsq = nsq.filter(Records.name.like("%%.%s" % (newdom.name)))
     if dofirst:
@@ -63,10 +66,7 @@ def dupsoarec(mdl, newdomid, newdomain_name):
     session.add(newsoarec)
     session.commit()
 
-# select * from records where name like '%.den01.pop' and type != 'NS' AND domain_id = 74;
-# update and set all of these to domain_id = 
-# select * from records where name like '%.den01.pop' and type != 'NS' AND domain_id = 74;
-# 114
+
 if __name__ == '__main__':
     pop_mdl = domqry('pop')
     print("pop domain id is %s" % (pop_mdl.id))
@@ -90,3 +90,8 @@ if __name__ == '__main__':
         new_soamdl = record_query(newdom.id, type_='SOA', dofirst=True)
         if pop_soamdl and not new_soamdl:
             dupsoarec(pop_soamdl, newdom.id, newdom.name)
+        mv_qry = record_query(pop_mdl.id, nottype='NS', namelike="%%.%s" % (newdom.name))
+        for rec in mv_qry:
+            print("mv from %s to new domain %s new domain_id %s rec %s" % (pop_mdl.name, newdom.name, newdom.id, rec))
+            rec.domain_id = newdom.id
+        session.commit()

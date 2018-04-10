@@ -69,7 +69,7 @@ class Records(Base):
 
     def __repr__(self):
         """Represent an instance of the class."""
-        return '%s %s %s %s' % (self.id, self.type, self.name, self.content)
+        return '%s %s %s %s %s' % (self.id, self.domain_id, self.type, self.name, self.content)
 
     def duplicate(self):
         """Duplicate for copy."""
