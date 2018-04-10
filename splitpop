@@ -63,7 +63,10 @@ def dupsoarec(mdl, newdomid, newdomain_name):
     session.add(newsoarec)
     session.commit()
 
-
+# select * from records where name like '%.den01.pop' and type != 'NS' AND domain_id = 74;
+# update and set all of these to domain_id = 
+# select * from records where name like '%.den01.pop' and type != 'NS' AND domain_id = 74;
+# 114
 if __name__ == '__main__':
     pop_mdl = domqry('pop')
     print("pop domain id is %s" % (pop_mdl.id))
