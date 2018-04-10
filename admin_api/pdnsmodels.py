@@ -1,12 +1,26 @@
 """Models from the powerdns 'pdns' database."""
+import sys
+import os
+from admin_api import ApiParser
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import create_engine, Column, INTEGER, VARCHAR, SmallInteger
 from sqlalchemy.orm import sessionmaker
 
+oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+configfile = '%s/api.cfg' % (oneup)
+config = ApiParser()
+config.read(configfile)
+
+dbuser = config.safe_get('database', 'user')
+dbpass = config.safe_get('database', 'pass')
+dbhost = config.safe_get('database', 'host')
+dbdb = config.safe_get('database', 'database')
+enginestring = 'mysql://%s:%s@%s/%s' % (dbuser, dbpass, dbhost, dbdb)
+
 # pylint: disable=invalid-name
 Base = declarative_base()
-engine = create_engine('mysql://pdns_user:ie0weeR1_jae3sai@dnstest2/pdns')
+engine = create_engine(enginestring)
 Session = sessionmaker(bind=engine)
 # create a Session
 session = Session()
