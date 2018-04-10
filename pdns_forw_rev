@@ -14,7 +14,10 @@ from sqlalchemy import func, desc
 from admin_api.clientapi import Clientapi
 from admin_api.pdnsmodels import Domains, Records, session
 
-DOAPI = True
+if len(sys.argv) > 1 and sys.argv[1] == 'heinous':
+    DOAPI = False
+else:
+    DOAPI = True
 if DOAPI:
     CLIAPI = Clientapi()
 re_slotspot = re.compile(r'slot.*\.spotx\.')
