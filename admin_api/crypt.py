@@ -73,7 +73,7 @@ class Keypair(object):
         if cnfgfile:
             self.cnfgfile = cnfgfile
         else:
-            oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            oneup = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
             self.cnfgfile = '%s/keys.cfg' % oneup
             self.log("config file is %s" % (self.cnfgfile))
         self.config = ApiParser()

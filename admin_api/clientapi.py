@@ -18,7 +18,7 @@ class Clientapi(object):
     def __init__(self):
         """Initialze the Clientapi class."""
         self.showlog = True
-        oneup = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        oneup = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
         self.logfile = '%s/afile.log' % oneup
         log_fv = open(self.logfile, 'w')
         log_fv.write('')
