@@ -1,4 +1,5 @@
 """An api to interact with powerdnsadmin to make changes scriptable."""
+# pylint: disable=E0401
 import hashlib
 import json
 import re
@@ -33,6 +34,7 @@ def build_rrset(name=None, ipaddr=None, type_='A', ttl=86400, disabled=False):
 
 
 def fetch_remote(remote_url, method='GET', data=None, accept=None, params=None, timeout=None, headers=None):
+    # pylint: disable=R0913
     """Fetch from the remote."""
     if data is not None and not isinstance(data, str):
         data = json.dumps(data)

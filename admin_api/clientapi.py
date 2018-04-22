@@ -14,6 +14,7 @@ from admin_api.crypt import Keypair, limitlines
 
 class Clientapi(object):
     """Api Client Class."""
+    # pylint: disable=R0902
 
     def __init__(self):
         """Initialze the Clientapi class."""
